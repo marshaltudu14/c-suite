@@ -1,11 +1,14 @@
-import { LoginForm } from "@/app/login-form";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import React from "react";
 
-export default function LoginPage() {
-  return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <LoginForm />
-      </div>
-    </div>
-  );
+export default async function DashboardPage() {
+  const supabase = await createClient();
+
+  const { data: userData, error } = await supabase.auth.getUser();
+
+  if (!userData.user) {
+    redirect("/login");
+  }
+  return <div>DashboardPage</div>;
 }
