@@ -10,16 +10,16 @@ import { ArrowLeft, MoreVertical, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// --- Replace Sheet with Dropdown Menu ---
 import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // Local data
 import {
@@ -79,7 +79,7 @@ export default function ChatInterface() {
   };
 
   // Auto-grow logic. If scrollHeight exceeds our max, we allow scroll inside the Textarea
-  const handleInput = (e) => {
+  const handleInput = () => {
     const el = textAreaRef.current;
     if (!el) return;
 
@@ -144,32 +144,20 @@ export default function ChatInterface() {
           </div>
         </div>
 
-        {/* Right group: three vertical dots -> Shadcn Sheet */}
-        <Sheet>
-          <SheetTrigger asChild>
+        {/* Right group: three vertical dots -> Replace Sheet with Dropdown Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button className="p-1 rounded-full text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white">
               <MoreVertical className="h-5 w-5" />
             </button>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <SheetHeader>
-              <SheetTitle>Menu or Settings</SheetTitle>
-              <SheetDescription>
-                Extra options, profile settings, etc.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="grid gap-4 py-4">
-              <p className="text-gray-600 dark:text-gray-300">
-                Hello from the Shadcn Sheet!
-              </p>
-            </div>
-            <SheetFooter>
-              <SheetClose asChild>
-                <Button type="button">Close</Button>
-              </SheetClose>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Menu or Settings</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>New Chat</DropdownMenuItem>
+            <DropdownMenuItem>Chat History</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Chat scrollable area (with bottom padding so last msg is above sticky bar) */}
@@ -195,7 +183,7 @@ export default function ChatInterface() {
           onKeyDown={handleKeyDown} // Enter to send
           rows={1}
           placeholder="Type your message..."
-          className="resize-none" // no manual corner dragging
+          className="resize-none"
           style={{ height: "auto", overflowY: "hidden" }} // Initial style
         />
         {/* Send button */}
