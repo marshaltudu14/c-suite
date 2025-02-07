@@ -15,6 +15,7 @@ import {
   executivesData,
   employeesData,
 } from "@/app/_components/OfficeData";
+import Image from "next/image";
 
 // Framer Motion variants for neat staggered appearance
 const containerVariants = {
@@ -174,10 +175,12 @@ export default function DashboardPage() {
                         {!exec.image ? (
                           <Skeleton className="h-12 w-12 rounded-full" />
                         ) : (
-                          <img
+                          <Image
                             src={exec.image}
                             alt={exec.name}
                             className="h-12 w-12 rounded-full object-cover"
+                            width={500}
+                            height={500}
                           />
                         )}
                         <div className="flex flex-col text-gray-700 dark:text-gray-200">
