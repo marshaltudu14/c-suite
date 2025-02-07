@@ -65,7 +65,7 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange
         >
           <Header />
-          <GlobalBackground />
+          {/* <GlobalBackground /> */}
           {children}
         </ThemeProvider>
       </body>
