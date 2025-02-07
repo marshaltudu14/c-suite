@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -8,7 +8,7 @@ import { ArrowLeft, MoreVertical, Send } from "lucide-react";
 
 // Shadcn UI
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
@@ -21,6 +21,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+// Local data
 import {
   executivesData,
   employeesData,
@@ -32,12 +33,12 @@ export default function ChatInterface() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Example: /office/executive/ceo => ["", "office", "executive", "ceo"]
+  // E.g., /office/executive/ceo => ["", "office", "executive", "ceo"]
   const pathParts = pathname.split("/");
   const category = pathParts[2]; // "executive" or "employee"
   const personId = pathParts[3]; // e.g., "ceo"
 
-  // Identify if route is for an executive or employee
+  // Decide if route is "executive" or "employee"
   const isExecutive = category === "executive";
   const list = isExecutive ? executivesData : employeesData;
   const demoMessages = isExecutive
@@ -50,14 +51,50 @@ export default function ChatInterface() {
     ? demoMessages[selectedPerson.id]
     : "No data found for this route.";
 
-  // Local state for the user's typed message
+  // State for typed message
   const [newMessage, setNewMessage] = useState("");
 
-  // Simple send handler (demo only)
+  // We'll reference the Textarea DOM element to auto-grow up to a limit
+  const textAreaRef = useRef(null);
+  const maxHeightPx = 128; // ~8 lines worth (adjust as needed)
+
   const handleSend = () => {
     if (!newMessage.trim()) return;
     alert(`Message sent: ${newMessage}`);
     setNewMessage("");
+    // Reset the Textarea’s height when message is sent
+    if (textAreaRef.current) {
+      textAreaRef.current.style.height = "auto";
+      textAreaRef.current.style.overflowY = "hidden";
+    }
+  };
+
+  // KeyDown to handle Enter for sending vs Shift+Enter for newline
+  const handleKeyDown = (e) => {
+    // Press Enter without Shift => send
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // prevents newline
+      handleSend();
+    }
+  };
+
+  // Auto-grow logic. If scrollHeight exceeds our max, we allow scroll inside the Textarea
+  const handleInput = (e) => {
+    const el = textAreaRef.current;
+    if (!el) return;
+
+    // Reset height so we can measure the scrollHeight accurately
+    el.style.height = "auto";
+
+    if (el.scrollHeight > maxHeightPx) {
+      // Lock to maxHeight, allow scrolling inside
+      el.style.height = `${maxHeightPx}px`;
+      el.style.overflowY = "auto";
+    } else {
+      // Grow naturally, hide scroll
+      el.style.height = `${el.scrollHeight}px`;
+      el.style.overflowY = "hidden";
+    }
   };
 
   return (
@@ -135,9 +172,9 @@ export default function ChatInterface() {
         </Sheet>
       </div>
 
-      {/* Chat scrollable area */}
+      {/* Chat scrollable area (with bottom padding so last msg is above sticky bar) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24">
-        {/* Single placeholder message. In a real app, you'd map over chat messages here. */}
+        {/* Single placeholder message. Replace with real messages mapped out. */}
         <motion.div
           className="max-w-sm rounded-xl p-3 text-sm bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
           initial={{ opacity: 0, x: -20 }}
@@ -147,13 +184,21 @@ export default function ChatInterface() {
         </motion.div>
       </div>
 
-      {/* Bottom input area: sticky at bottom */}
+      {/* Sticky bottom input area */}
       <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex items-center space-x-2">
-        <Input
-          placeholder="Type your message..."
+        {/* Multi-line Textarea with auto-grow up to maxHeightPx */}
+        <Textarea
+          ref={textAreaRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
+          onInput={handleInput} // auto-grow logic
+          onKeyDown={handleKeyDown} // Enter to send
+          rows={1}
+          placeholder="Type your message..."
+          className="resize-none" // no manual corner dragging
+          style={{ height: "auto", overflowY: "hidden" }} // Initial style
         />
+        {/* Send button */}
         <button
           onClick={handleSend}
           className="p-2 rounded-full text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
