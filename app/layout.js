@@ -56,7 +56,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`relative min-h-screen bg-transparent ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`relative min-h-screen bg-gradient-to-b from-white via-gray-100 to-white dark:bg-gradient-to-b dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"
