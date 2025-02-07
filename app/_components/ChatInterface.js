@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -54,6 +54,18 @@ export default function ChatInterface() {
   // State for typed message
   const [newMessage, setNewMessage] = useState("");
 
+  // Detect mobile to change Enter key behavior
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      if (/mobi|android|touch|iphone|ipad|ipod/.test(userAgent)) {
+        setIsMobile(true);
+      }
+    }
+  }, []);
+
   // We'll reference the Textarea DOM element to auto-grow up to a limit
   const textAreaRef = useRef(null);
   const maxHeightPx = 128; // ~8 lines worth (adjust as needed)
@@ -70,16 +82,17 @@ export default function ChatInterface() {
   };
 
   // KeyDown to handle Enter for sending vs Shift+Enter for newline
+  // If on mobile, pressing Enter always inserts a new line.
+  // Otherwise (desktop), Enter sends unless Shift is pressed.
   const handleKeyDown = (e) => {
-    // Press Enter without Shift => send
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // prevents newline
+    if (!isMobile && e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       handleSend();
     }
   };
 
   // Auto-grow logic. If scrollHeight exceeds our max, we allow scroll inside the Textarea
-  const handleInput = (e) => {
+  const handleInput = () => {
     const el = textAreaRef.current;
     if (!el) return;
 
@@ -192,11 +205,11 @@ export default function ChatInterface() {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onInput={handleInput} // auto-grow logic
-          onKeyDown={handleKeyDown} // Enter to send
+          onKeyDown={handleKeyDown} // Enter to send only on desktop
           rows={1}
           placeholder="Type your message..."
-          className="resize-none" // no manual corner dragging
-          style={{ height: "auto", overflowY: "hidden" }} // Initial style
+          className="resize-none"
+          style={{ height: "auto", overflowY: "hidden" }}
         />
         {/* Send button */}
         <button
