@@ -16,6 +16,7 @@ import {
   employeesData,
 } from "@/app/_components/OfficeData";
 import Image from "next/image";
+import Header from "./_components/Header";
 
 // Framer Motion variants for neat staggered appearance
 const containerVariants = {
@@ -127,9 +128,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen flex flex-col items-center">
+      <Header />
       {/* Container for overall layout */}
-      <div className="w-full max-w-2xl flex flex-col space-y-4">
+      <div className="w-full max-w-2xl flex flex-col space-y-4 p-4 md:p-8">
         {/* Search Input */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
