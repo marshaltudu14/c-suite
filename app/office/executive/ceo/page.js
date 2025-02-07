@@ -5,7 +5,7 @@ const CeoPage = () => {
   return (
     <div>
       <div>
-        <ChatInterface isOnline={true} />
+        <ChatInterface isOnline={true} role="ceo" />
       </div>
     </div>
   );
