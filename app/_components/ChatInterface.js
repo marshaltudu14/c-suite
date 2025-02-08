@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, MoreVertical, Send, ArrowDown } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-
+import { motion } from "framer-motion";
+import { ArrowLeft, MoreVertical, Send, ArrowDownCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -14,163 +15,132 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  executivesData,
+  employeesData,
+  demoExecutiveMessages,
+  demoEmployeeMessages,
+} from "@/app/_components/OfficeData";
 
-/*
-  Pass in personaData to customize:
-  ChatInterface({
-    personaData: {
-      name: "John Doe",
-      position: "CTO",
-      image: "/images/cto.png",
-      systemPrompt: "You are a wise CTO..."
-    }
-  })
-*/
-export default function ChatInterface({ personaData }) {
+export default function ChatInterface() {
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Destructure or fallback
-  const {
-    name = "Unknown Person",
-    position = "Unknown Role",
-    image = "",
-    systemPrompt = "You are a helpful AI assistant.",
-  } = personaData || {};
+  // E.g., /office/executive/ceo => ["", "office", "executive", "ceo"]
+  const pathParts = pathname.split("/");
+  const category = pathParts[2]; // "executive" or "employee"
+  const personId = pathParts[3]; // e.g., "ceo"
 
-  // We start with a single introduction message from AI
+  const isExecutive = category === "executive";
+  const list = isExecutive ? executivesData : employeesData;
+  const demoMessages = isExecutive
+    ? demoExecutiveMessages
+    : demoEmployeeMessages;
+
+  const selectedPerson = list.find((item) => item.id === personId) || null;
+  const defaultMessage = selectedPerson
+    ? demoMessages[selectedPerson.id]
+    : "No data found for this route.";
+
+  // Conversation state: array of { id, role: 'user'|'assistant', text }
   const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content:
-        "Hi there! I am here to help. Feel free to ask me anything or provide instructions.",
-    },
+    { id: Date.now(), role: "assistant", text: defaultMessage },
   ]);
-
   const [newMessage, setNewMessage] = useState("");
-
-  // For text area auto-resize
-  const textAreaRef = useRef(null);
-  // For scrolling
   const chatContainerRef = useRef(null);
 
-  // Track if user is on mobile (so Enter key is different)
+  // Track if on mobile
   const [isMobile, setIsMobile] = useState(false);
-
-  // Show/hide scroll-down button
-  const [showScrollDown, setShowScrollDown] = useState(false);
-
-  // Check screen size
   useEffect(() => {
-    function handleResize() {
+    const handleResize = () => {
       if (typeof window !== "undefined") {
         setIsMobile(window.innerWidth < 768);
       }
-    }
+    };
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Scroll observer to decide if we show "scroll down" button
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
-
-    function handleScroll() {
-      // Check how far from the bottom
-      const bottomOffset =
-        container.scrollHeight - (container.scrollTop + container.clientHeight);
-
-      // If the user is more than ~50px away from the bottom, show the button
-      setShowScrollDown(bottomOffset > 50);
-    }
-
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Always scroll to bottom when messages change
+  // Auto scroll to bottom whenever messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  function scrollToBottom() {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
-    }
-  }
+  // For auto-growing text area
+  const textAreaRef = useRef(null);
+  const maxHeightPx = 128; // ~8 lines worth
 
-  async function handleSend() {
+  const handleSend = async () => {
     if (!newMessage.trim()) return;
-
-    // Add user's message
-    const updatedMessages = [
-      ...messages,
-      { role: "user", content: newMessage },
-    ];
-    setMessages(updatedMessages);
+    // Push user message
+    const userMsg = {
+      id: Date.now() + Math.random(),
+      role: "user",
+      text: newMessage.trim(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
     setNewMessage("");
 
-    // Prepare payload
+    // Reset textarea height
+    if (textAreaRef.current) {
+      textAreaRef.current.style.height = "auto";
+      textAreaRef.current.style.overflowY = "hidden";
+    }
+
+    // Prepare a combined prompt with context
+    // For example, you can add details about the user or the "role"
+    // (like CTO/CMO info) to make the response more personalized.
+    const personalizedPrompt = `You are ${
+      selectedPerson?.position || "an assistant"
+    }. 
+User says: "${userMsg.text}"`;
+
     try {
-      const res = await fetch("/api/chat", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversation: [
-            // Start with a system message for persona's prompt
-            { role: "system", content: systemPrompt },
-            // Then the entire conversation
-            ...updatedMessages,
-          ],
-        }),
+        body: JSON.stringify({ prompt: personalizedPrompt }),
       });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch from Ollama API");
+      if (!response.ok) {
+        throw new Error("Failed to get response from Ollama");
       }
+      const data = await response.json();
+      console.log("Ollama response:", response);
 
-      const data = await res.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // Show raw response text from Ollama
-      const assistantReply = data.response || "(No response)";
+      // Add Ollama response to messages
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: assistantReply },
+        {
+          id: Date.now() + Math.random(),
+          role: "assistant",
+          text: data.completion || "...",
+        },
       ]);
-    } catch (err) {
-      console.error("Error calling /api/ollama:", err);
-      // Show error as AI message
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `Error: ${err.message}` },
+        {
+          id: Date.now() + Math.random(),
+          role: "assistant",
+          text: `Error: ${error.message}`,
+        },
       ]);
-    } finally {
-      // Reset textarea size
-      if (textAreaRef.current) {
-        textAreaRef.current.style.height = "auto";
-        textAreaRef.current.style.overflowY = "hidden";
-      }
     }
-  }
+  };
 
-  function handleKeyDown(e) {
+  // On desktop, Enter (w/o Shift) => send
+  const handleKeyDown = (e) => {
     if (!isMobile) {
-      // Desktop: Enter (without shift) -> send
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
     }
-  }
+  };
 
-  const maxHeightPx = 128; // ~8 lines
-  function handleInput() {
+  // Auto-grow the textarea
+  const handleInput = () => {
     const el = textAreaRef.current;
     if (!el) return;
     el.style.height = "auto";
@@ -181,7 +151,31 @@ export default function ChatInterface({ personaData }) {
       el.style.height = `${el.scrollHeight}px`;
       el.style.overflowY = "hidden";
     }
-  }
+  };
+
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  };
+
+  // Show "Scroll to bottom" button if user is not viewing the latest messages
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const handleScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    // If user is near the bottom, hide the button
+    const threshold = 20;
+    if (scrollHeight - scrollTop - clientHeight <= threshold) {
+      setShowScrollToBottom(false);
+    } else {
+      setShowScrollToBottom(true);
+    }
+  };
 
   return (
     <motion.div
@@ -199,10 +193,11 @@ export default function ChatInterface({ personaData }) {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          {image ? (
+          {/* Display image or skeleton */}
+          {selectedPerson?.image ? (
             <Image
-              src={image}
-              alt={name}
+              src={selectedPerson.image}
+              alt={selectedPerson.name}
               width={32}
               height={32}
               className="rounded-full object-cover"
@@ -210,16 +205,26 @@ export default function ChatInterface({ personaData }) {
           ) : (
             <Skeleton className="w-8 h-8 rounded-full" />
           )}
+          {/* Name & position */}
           <div className="flex flex-col">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              {name}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {position}
-            </p>
+            {selectedPerson ? (
+              <>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {selectedPerson.name}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {selectedPerson.position}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-red-500">
+                Unknown route
+              </p>
+            )}
           </div>
         </div>
-        {/* Right group: menu */}
+
+        {/* Right group: three vertical dots -> Dropdown Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="p-1 rounded-full text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white">
@@ -238,50 +243,55 @@ export default function ChatInterface({ personaData }) {
         </DropdownMenu>
       </div>
 
-      {/* Chat messages container */}
+      {/* Chat scrollable area */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 pb-24 space-y-3"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 pb-24 space-y-2"
       >
-        {messages.map((msg, idx) => {
+        {messages.map((msg) => {
           const isUser = msg.role === "user";
           return (
             <motion.div
-              key={idx}
-              className={`flex w-full ${
-                isUser ? "justify-end" : "justify-start"
-              }`}
+              key={msg.id}
               initial={{ opacity: 0, x: isUser ? 20 : -20 }}
               animate={{ opacity: 1, x: 0 }}
+              className={`flex ${
+                isUser ? "justify-end" : "justify-start"
+              } w-full`}
             >
               <div
-                className={`rounded-xl p-3 max-w-[80%] text-sm break-words ${
-                  isUser
-                    ? "bg-blue-500 dark:bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                }`}
+                className={`max-w-sm rounded-xl p-3 text-sm whitespace-pre-wrap
+                  ${
+                    isUser
+                      ? // user bubble
+                        "bg-blue-500 text-white dark:bg-blue-600"
+                      : // assistant bubble
+                        "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                  }
+                `}
               >
-                {msg.content}
+                {msg.text}
               </div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Scroll Down Button */}
-      {showScrollDown && (
+      {/* Scroll to bottom button (shows only when not at bottom) */}
+      {showScrollToBottom && (
         <motion.button
-          className="fixed bottom-20 right-5 p-2 bg-gray-200 dark:bg-gray-700 
-            text-gray-700 dark:text-gray-200 rounded-full shadow-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          className="fixed bottom-20 right-4 bg-gray-100 dark:bg-gray-700 p-2 rounded-full shadow-lg text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
           onClick={scrollToBottom}
         >
-          <ArrowDown className="h-5 w-5" />
+          <ArrowDownCircle className="h-5 w-5" />
         </motion.button>
       )}
 
-      {/* Text input area */}
+      {/* Sticky bottom input area */}
       <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex items-center space-x-2">
         <Textarea
           ref={textAreaRef}
@@ -291,7 +301,7 @@ export default function ChatInterface({ personaData }) {
           onInput={handleInput}
           rows={1}
           placeholder="Type your message..."
-          className="resize-none"
+          className="resize-none dark:bg-gray-900"
           style={{ height: "auto", overflowY: "hidden" }}
         />
         <button
