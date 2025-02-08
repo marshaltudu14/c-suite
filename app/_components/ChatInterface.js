@@ -106,13 +106,16 @@ export default function ChatInterface({ personaData }) {
     if (!newMessage.trim()) return;
 
     // Add user's message
-    const updatedMessages = [...messages, { role: "user", content: newMessage }];
+    const updatedMessages = [
+      ...messages,
+      { role: "user", content: newMessage },
+    ];
     setMessages(updatedMessages);
     setNewMessage("");
 
     // Prepare payload
     try {
-      const res = await fetch("/api/ollama", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -245,7 +248,9 @@ export default function ChatInterface({ personaData }) {
           return (
             <motion.div
               key={idx}
-              className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+              className={`flex w-full ${
+                isUser ? "justify-end" : "justify-start"
+              }`}
               initial={{ opacity: 0, x: isUser ? 20 : -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
