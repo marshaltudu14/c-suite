@@ -28,6 +28,8 @@ export async function POST(request) {
     });
     const prompt = promptParts.join("") + "Assistant: ";
 
+    console.log("Prompt:", prompt);
+
     // Create an Ollama client
     // Adjust baseUrl if your Ollama server is on a different host/port
     const client = new Ollama({ baseUrl: "http://127.0.0.1:11411" });
@@ -36,7 +38,7 @@ export async function POST(request) {
     // You can also pass a 'model' property, e.g. { model: "llama2" }
     const response = await client.generate({
       prompt: prompt,
-      // model: "llama2",
+      model: "deepseek-r1:1.5b",
       // any other options from the 'ollama' package
     });
 
