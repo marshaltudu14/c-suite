@@ -7,25 +7,30 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Example ChatInterface
-export default function ChatInterface({ personaData }) {
-  /*
-    personaData can include:
-    {
-      name: "string",           // e.g. "Jane Doe"
-      position: "string",       // e.g. "Chief Marketing Officer"
-      image: "string",          // e.g. "/images/cmo.png"
-      systemPrompt: "string",   // e.g. "You are the CMO. Provide marketing guidance..."
-      // any other custom data you want, e.g. attachments, doc references, etc.
+/*
+  Pass in personaData to customize:
+  ChatInterface({
+    personaData: {
+      name: "John Doe",
+      position: "CTO",
+      image: "/images/cto.png",
+      systemPrompt: "You are a wise CTO..."
     }
-  */
-
+  })
+*/
+export default function ChatInterface({ personaData }) {
   const router = useRouter();
 
-  // De-structure or fallback to defaults
+  // Destructure or fallback
   const {
     name = "Unknown Person",
     position = "Unknown Role",
@@ -33,20 +38,29 @@ export default function ChatInterface({ personaData }) {
     systemPrompt = "You are a helpful AI assistant.",
   } = personaData || {};
 
-  // State for the conversation
-  // Each message: { role: "user" | "assistant" | "system", content: "..." }
-  const [messages, setMessages] = useState([]);
+  // We start with a single introduction message from AI
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Hi there! I am here to help. Feel free to ask me anything or provide instructions.",
+    },
+  ]);
+
   const [newMessage, setNewMessage] = useState("");
 
   // For text area auto-resize
   const textAreaRef = useRef(null);
+  // For scrolling
   const chatContainerRef = useRef(null);
 
-  // Tracks whether we show the "scroll down" button
+  // Track if user is on mobile (so Enter key is different)
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Show/hide scroll-down button
   const [showScrollDown, setShowScrollDown] = useState(false);
 
-  // Tracks if user is on mobile (so Enter key can behave differently)
-  const [isMobile, setIsMobile] = useState(false);
+  // Check screen size
   useEffect(() => {
     function handleResize() {
       if (typeof window !== "undefined") {
@@ -58,53 +72,54 @@ export default function ChatInterface({ personaData }) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Observe scroll to toggle scroll-down button
+  // Scroll observer to decide if we show "scroll down" button
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
 
-    function onScroll() {
-      const nearBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-      setShowScrollDown(!nearBottom);
+    function handleScroll() {
+      // Check how far from the bottom
+      const bottomOffset =
+        container.scrollHeight - (container.scrollTop + container.clientHeight);
+
+      // If the user is more than ~50px away from the bottom, show the button
+      setShowScrollDown(bottomOffset > 50);
     }
 
-    container.addEventListener("scroll", onScroll);
-    return () => container.removeEventListener("scroll", onScroll);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Whenever messages update, scroll to bottom
+  // Always scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   function scrollToBottom() {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
   }
 
-  const handleSend = async () => {
+  async function handleSend() {
     if (!newMessage.trim()) return;
 
-    // Add user's message to local state
-    const updatedMessages = [
-      ...messages,
-      { role: "user", content: newMessage },
-    ];
+    // Add user's message
+    const updatedMessages = [...messages, { role: "user", content: newMessage }];
     setMessages(updatedMessages);
     setNewMessage("");
 
-    // Prepare the payload for the API
+    // Prepare payload
     try {
       const res = await fetch("/api/ollama", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           conversation: [
-            // Start with a system message (the persona's prompt)
+            // Start with a system message for persona's prompt
             { role: "system", content: systemPrompt },
-            // Then all conversation messages so far
+            // Then the entire conversation
             ...updatedMessages,
           ],
         }),
@@ -119,6 +134,7 @@ export default function ChatInterface({ personaData }) {
         throw new Error(data.error);
       }
 
+      // Show raw response text from Ollama
       const assistantReply = data.response || "(No response)";
       setMessages((prev) => [
         ...prev,
@@ -126,31 +142,32 @@ export default function ChatInterface({ personaData }) {
       ]);
     } catch (err) {
       console.error("Error calling /api/ollama:", err);
+      // Show error as AI message
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: `Error: ${err.message}` },
       ]);
     } finally {
-      // Reset textarea style
+      // Reset textarea size
       if (textAreaRef.current) {
         textAreaRef.current.style.height = "auto";
         textAreaRef.current.style.overflowY = "hidden";
       }
     }
-  };
+  }
 
-  const handleKeyDown = (e) => {
+  function handleKeyDown(e) {
     if (!isMobile) {
-      // On desktop, Enter (without Shift) -> send
+      // Desktop: Enter (without shift) -> send
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
     }
-  };
+  }
 
   const maxHeightPx = 128; // ~8 lines
-  const handleInput = () => {
+  function handleInput() {
     const el = textAreaRef.current;
     if (!el) return;
     el.style.height = "auto";
@@ -161,7 +178,7 @@ export default function ChatInterface({ personaData }) {
       el.style.height = `${el.scrollHeight}px`;
       el.style.overflowY = "hidden";
     }
-  };
+  }
 
   return (
     <motion.div
@@ -199,7 +216,6 @@ export default function ChatInterface({ personaData }) {
             </p>
           </div>
         </div>
-
         {/* Right group: menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -220,49 +236,38 @@ export default function ChatInterface({ personaData }) {
       </div>
 
       {/* Chat messages container */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
-        {/* Show each message */}
-        {messages.length === 0 ? (
-          <motion.div
-            className="max-w-sm rounded-xl p-3 text-sm 
-                       bg-gray-200 text-gray-700 
-                       dark:bg-gray-700 dark:text-gray-200"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            {/* You can put a static "welcome" or "no messages" text here */}
-            <p>No messages yet. Ask me something!</p>
-          </motion.div>
-        ) : (
-          messages.map((msg, idx) => {
-            const isUser = msg.role === "user";
-            return (
-              <motion.div
-                key={idx}
-                className={`flex ${isUser ? "justify-end" : "justify-start"} w-full`}
-                initial={{ opacity: 0, x: isUser ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-4 pb-24 space-y-3"
+      >
+        {messages.map((msg, idx) => {
+          const isUser = msg.role === "user";
+          return (
+            <motion.div
+              key={idx}
+              className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+              initial={{ opacity: 0, x: isUser ? 20 : -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <div
+                className={`rounded-xl p-3 max-w-[80%] text-sm break-words ${
+                  isUser
+                    ? "bg-blue-500 dark:bg-blue-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                }`}
               >
-                <div
-                  className={`rounded-xl p-3 max-w-[80%] text-sm break-words ${
-                    isUser
-                      ? "bg-blue-500 dark:bg-blue-600 text-white"
-                      : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              </motion.div>
-            );
-          })
-        )}
+                {msg.content}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Scroll Down Button */}
       {showScrollDown && (
         <motion.button
           className="fixed bottom-20 right-5 p-2 bg-gray-200 dark:bg-gray-700 
-                     text-gray-700 dark:text-gray-200 rounded-full shadow-lg"
+            text-gray-700 dark:text-gray-200 rounded-full shadow-lg"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           onClick={scrollToBottom}
