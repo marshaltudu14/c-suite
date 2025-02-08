@@ -4,10 +4,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, MoreVertical, Send, ArrowDownCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, MoreVertical, Send } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -15,12 +14,34 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
 import {
   executivesData,
   employeesData,
   demoExecutiveMessages,
   demoEmployeeMessages,
 } from "@/app/_components/OfficeData";
+
+// A simple bubble for messages
+function MessageBubble({ message }) {
+  const isUser = message.role === "user";
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: isUser ? 20 : -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2 }}
+      className={`max-w-xs w-fit break-words rounded-xl p-3 text-sm
+        ${
+          isUser
+            ? "bg-blue-500 text-white self-end"
+            : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-100"
+        }
+      `}
+    >
+      {message.content}
+    </motion.div>
+  );
+}
 
 export default function ChatInterface() {
   const router = useRouter();
@@ -29,107 +50,143 @@ export default function ChatInterface() {
   // E.g., /office/executive/ceo => ["", "office", "executive", "ceo"]
   const pathParts = pathname.split("/");
   const category = pathParts[2]; // "executive" or "employee"
-  const personId = pathParts[3]; // e.g., "ceo"
+  const personId = pathParts[3]; // e.g. "ceo"
 
   const isExecutive = category === "executive";
   const list = isExecutive ? executivesData : employeesData;
-  const demoMessages = isExecutive
+  const defaultMessages = isExecutive
     ? demoExecutiveMessages
     : demoEmployeeMessages;
 
+  // Find the person data based on ID
   const selectedPerson = list.find((item) => item.id === personId) || null;
-  const defaultMessage = selectedPerson
-    ? demoMessages[selectedPerson.id]
-    : "No data found for this route.";
 
-  // Conversation state: array of { id, role: 'user'|'assistant', text }
-  const [messages, setMessages] = useState([
-    { id: Date.now(), role: "assistant", text: defaultMessage },
-  ]);
+  // We'll keep the entire conversation in this state array
+  const [messages, setMessages] = useState([]);
+  // For user input
   const [newMessage, setNewMessage] = useState("");
+  // For partial streaming text from Ollama
+  const [streamingMessage, setStreamingMessage] = useState("");
+  // Flag if streaming in progress
+  const [isStreaming, setIsStreaming] = useState(false);
+  // Desktop vs mobile (to decide how Enter works)
+  const [isMobile, setIsMobile] = useState(false);
+  // For auto-growing text area
+  const textAreaRef = useRef(null);
+  const maxHeightPx = 128;
+
+  // Scroll container ref to keep conversation scrolled to the bottom
   const chatContainerRef = useRef(null);
 
-  // Track if on mobile
-  const [isMobile, setIsMobile] = useState(false);
+  // On mount, if no conversation yet, insert an “intro” agent message
   useEffect(() => {
-    const handleResize = () => {
+    if (selectedPerson && messages.length === 0) {
+      const introduction = `Hi, I'm ${selectedPerson.name}, the ${selectedPerson.position}. How can I help you today?`;
+      setMessages([{ role: "agent", content: introduction }]);
+    }
+  }, [selectedPerson, messages.length]);
+
+  // Detect screen size
+  useEffect(() => {
+    function handleResize() {
       if (typeof window !== "undefined") {
         setIsMobile(window.innerWidth < 768);
       }
-    };
+    }
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Auto scroll to bottom whenever messages change
+  // Always scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [messages, streamingMessage]);
 
-  // For auto-growing text area
-  const textAreaRef = useRef(null);
-  const maxHeightPx = 128; // ~8 lines worth
-
+  // Send user message + get streamed response from Ollama
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
-    // Push user message
-    const userMsg = {
-      id: Date.now() + Math.random(),
-      role: "user",
-      text: newMessage.trim(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    const text = newMessage.trim();
+    if (!text || !selectedPerson) return;
+
+    // Push user’s message
+    const updatedMessages = [...messages, { role: "user", content: text }];
+    setMessages(updatedMessages);
     setNewMessage("");
 
-    // Reset textarea height
-    if (textAreaRef.current) {
-      textAreaRef.current.style.height = "auto";
-      textAreaRef.current.style.overflowY = "hidden";
-    }
-
-    // Prepare a combined prompt with context
-    // For example, you can add details about the user or the "role"
-    // (like CTO/CMO info) to make the response more personalized.
-    const personalizedPrompt = `You are ${
-      selectedPerson?.position || "an assistant"
-    }. 
-User says: "${userMsg.text}"`;
-
+    // Now call our /api/chat route
     try {
+      setIsStreaming(true);
+      setStreamingMessage(""); // clear any leftover partial text
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: personalizedPrompt }),
+        body: JSON.stringify({
+          messages: updatedMessages,
+          agentName: selectedPerson.name,
+          agentPosition: selectedPerson.position,
+        }),
       });
-      if (!response.ok) {
-        throw new Error("Failed to get response from Ollama");
-      }
-      const data = await response.json();
-      console.log("Ollama response:", response);
 
-      // Add Ollama response to messages
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + Math.random(),
-          role: "assistant",
-          text: data.completion || "...",
-        },
-      ]);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + Math.random(),
-          role: "assistant",
-          text: `Error: ${error.message}`,
-        },
-      ]);
+      if (!response.ok) {
+        console.error("Ollama fetch error:", response.statusText);
+        setIsStreaming(false);
+        return;
+      }
+
+      // Stream the NDJSON: each line is a JSON object with { token, done }.
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let tempText = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        // Decode chunk
+        const chunk = decoder.decode(value, { stream: true });
+        // Could contain multiple lines
+        const lines = chunk.split("\n").filter(Boolean);
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.done) {
+              // Streaming done for this response
+              break;
+            }
+            if (data.token) {
+              // Accumulate partial text
+              tempText += data.token;
+              setStreamingMessage(tempText);
+            }
+          } catch (err) {
+            console.error("Error parsing Ollama line:", err, line);
+          }
+        }
+      }
+
+      // Finalize the partial text into the messages array
+      if (tempText) {
+        setMessages((prev) => [...prev, { role: "agent", content: tempText }]);
+      }
+    } catch (err) {
+      console.error("Error streaming from Ollama:", err);
+    } finally {
+      setIsStreaming(false);
+      setStreamingMessage("");
+      // Reset text area
+      if (textAreaRef.current) {
+        textAreaRef.current.style.height = "auto";
+        textAreaRef.current.style.overflowY = "hidden";
+      }
     }
   };
 
-  // On desktop, Enter (w/o Shift) => send
+  // Enter key logic on desktop
   const handleKeyDown = (e) => {
     if (!isMobile) {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -139,7 +196,7 @@ User says: "${userMsg.text}"`;
     }
   };
 
-  // Auto-grow the textarea
+  // Auto-grow textarea
   const handleInput = () => {
     const el = textAreaRef.current;
     if (!el) return;
@@ -150,30 +207,6 @@ User says: "${userMsg.text}"`;
     } else {
       el.style.height = `${el.scrollHeight}px`;
       el.style.overflowY = "hidden";
-    }
-  };
-
-  // Scroll to bottom
-  const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
-    }
-  };
-
-  // Show "Scroll to bottom" button if user is not viewing the latest messages
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-
-  const handleScroll = () => {
-    const el = chatContainerRef.current;
-    if (!el) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    // If user is near the bottom, hide the button
-    const threshold = 20;
-    if (scrollHeight - scrollTop - clientHeight <= threshold) {
-      setShowScrollToBottom(false);
-    } else {
-      setShowScrollToBottom(true);
     }
   };
 
@@ -193,7 +226,6 @@ User says: "${userMsg.text}"`;
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          {/* Display image or skeleton */}
           {selectedPerson?.image ? (
             <Image
               src={selectedPerson.image}
@@ -205,7 +237,6 @@ User says: "${userMsg.text}"`;
           ) : (
             <Skeleton className="w-8 h-8 rounded-full" />
           )}
-          {/* Name & position */}
           <div className="flex flex-col">
             {selectedPerson ? (
               <>
@@ -223,7 +254,6 @@ User says: "${userMsg.text}"`;
             )}
           </div>
         </div>
-
         {/* Right group: three vertical dots -> Dropdown Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -246,50 +276,18 @@ User says: "${userMsg.text}"`;
       {/* Chat scrollable area */}
       <div
         ref={chatContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 pb-24 space-y-2"
+        className="flex-1 overflow-y-auto p-4 pb-24 flex flex-col space-y-2"
       >
-        {messages.map((msg) => {
-          const isUser = msg.role === "user";
-          return (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, x: isUser ? 20 : -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className={`flex ${
-                isUser ? "justify-end" : "justify-start"
-              } w-full`}
-            >
-              <div
-                className={`max-w-sm rounded-xl p-3 text-sm whitespace-pre-wrap
-                  ${
-                    isUser
-                      ? // user bubble
-                        "bg-blue-500 text-white dark:bg-blue-600"
-                      : // assistant bubble
-                        "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-                  }
-                `}
-              >
-                {msg.text}
-              </div>
-            </motion.div>
-          );
-        })}
+        {messages.map((msg, idx) => (
+          <MessageBubble key={idx} message={msg} />
+        ))}
+        {/* If streaming, show partial agent text as it arrives */}
+        {isStreaming && streamingMessage && (
+          <MessageBubble
+            message={{ role: "agent", content: streamingMessage }}
+          />
+        )}
       </div>
-
-      {/* Scroll to bottom button (shows only when not at bottom) */}
-      {showScrollToBottom && (
-        <motion.button
-          className="fixed bottom-20 right-4 bg-gray-100 dark:bg-gray-700 p-2 rounded-full shadow-lg text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          onClick={scrollToBottom}
-        >
-          <ArrowDownCircle className="h-5 w-5" />
-        </motion.button>
-      )}
 
       {/* Sticky bottom input area */}
       <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex items-center space-x-2">
@@ -301,12 +299,14 @@ User says: "${userMsg.text}"`;
           onInput={handleInput}
           rows={1}
           placeholder="Type your message..."
-          className="resize-none dark:bg-gray-900"
+          className="resize-none"
           style={{ height: "auto", overflowY: "hidden" }}
+          disabled={isStreaming}
         />
         <button
           onClick={handleSend}
           className="p-2 rounded-full text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
+          disabled={isStreaming}
         >
           <Send className="h-5 w-5" />
         </button>
