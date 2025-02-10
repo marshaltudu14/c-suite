@@ -18,7 +18,7 @@ export async function POST(req) {
 
     // Call Ollama with your chosen model (e.g., llama3.1)
     const result = await streamText({
-      model: ollama("deepseek-r1:1.5b"),
+      model: ollama("deepseek-r1:14b"),
       messages,
     });
 
