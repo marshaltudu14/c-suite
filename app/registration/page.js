@@ -15,7 +15,7 @@ export default async function SignupPage({ params }) {
     error,
   } = await supabase.auth.getUser();
   if (error) {
-    console.log("error fetch user:", error.message);
+    console.log("Error fetching user:", error.message);
   }
   if (user) {
     nextRedirect(redirectUrl);

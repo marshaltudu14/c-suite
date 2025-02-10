@@ -105,15 +105,15 @@ export default function SignupForm() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4 sm:p-6 md:p-8 text-gray-900 dark:text-gray-100 transition-colors">
       {/* Optional background gradient or decorative elements */}
-      <div className="absolute inset-0 pointer-events-none -z-10 bg-gradient-to-br from-gray-100 to-white dark:from-gray-900 dark:to-gray-950" />
+      <div className="absolute inset-0 pointer-events-none -z-10" />
 
-      <Card className="w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-950">
+      <Card className="w-full max-w-md shadow-xl bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-2xl font-bold">
             Create an Account
           </CardTitle>
           <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-            Sign up to start shopping today
+            Sign up to build your own AI Virtual Workforce
           </CardDescription>
         </CardHeader>
 

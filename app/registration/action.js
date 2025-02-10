@@ -73,7 +73,6 @@ export async function registerUser({ email, password, passwordConfirm }) {
   }
 
   // 6. If the user object is returned with no identities or an empty identities array,
-
   if (data.user && data.user.identities && data.user.identities.length === 0) {
     return {
       error: true,
