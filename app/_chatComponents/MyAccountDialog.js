@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import {
@@ -21,7 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-// Define a Zod schema for your form fields
+/*
+  Full schema for final validation on submit.
+  Only userName and companyName are strictly required.
+*/
 const accountSchema = z.object({
   userName: z.string().min(1, "Name is required."),
   userRole: z.string().optional(),
@@ -35,6 +38,14 @@ const accountSchema = z.object({
   companyPolicy: z.string().optional(),
   extraDetails: z.string().optional(),
 });
+
+/*
+  We create separate mini-schemas for *real-time* validation
+  of required fields so we don't re-validate the entire form
+  every time the user types in just one field.
+*/
+const userNameSchema = z.string().min(1, "Name is required.");
+const companyNameSchema = z.string().min(1, "Company name is required.");
 
 export default function MyAccountDialog({ open, onOpenChange }) {
   // Local state for form fields
@@ -53,7 +64,11 @@ export default function MyAccountDialog({ open, onOpenChange }) {
   // Local state for errors (from Zod)
   const [formErrors, setFormErrors] = useState({});
 
-  // Fetch existing account details whenever the dialog is opened
+  // Refs to scroll into view when there's an error
+  const userNameRef = useRef(null);
+  const companyNameRef = useRef(null);
+
+  // ------------------ Fetch existing data on open ------------------
   useEffect(() => {
     async function fetchAccountDetails() {
       try {
@@ -103,12 +118,47 @@ export default function MyAccountDialog({ open, onOpenChange }) {
     }
   }, [open]);
 
-  // Validate using Zod and submit data
-  async function handleSubmit() {
-    setFormErrors({});
+  // ------------------ Real-time validation for required fields ------------------
+  function handleUserNameChange(value) {
+    setUserName(value);
 
-    // Attempt to parse data with Zod
+    // Validate this field only
+    const result = userNameSchema.safeParse(value);
+    setFormErrors((prevErrors) => {
+      const newErrors = { ...prevErrors };
+      if (result.success) {
+        // Remove error if it exists
+        delete newErrors.userName;
+      } else {
+        // Set/Update error
+        newErrors.userName = result.error.issues[0].message;
+      }
+      return newErrors;
+    });
+  }
+
+  function handleCompanyNameChange(value) {
+    setCompanyName(value);
+
+    const result = companyNameSchema.safeParse(value);
+    setFormErrors((prevErrors) => {
+      const newErrors = { ...prevErrors };
+      if (result.success) {
+        delete newErrors.companyName;
+      } else {
+        newErrors.companyName = result.error.issues[0].message;
+      }
+      return newErrors;
+    });
+  }
+
+  // ------------------ Final submit & full form validation ------------------
+  async function handleSubmit() {
     try {
+      // First, clear out old errors
+      setFormErrors({});
+
+      // Perform a final parse for everything
       const parsedData = accountSchema.parse({
         userName,
         userRole,
@@ -123,7 +173,7 @@ export default function MyAccountDialog({ open, onOpenChange }) {
         extraDetails,
       });
 
-      // If parse was successful, proceed with saving data
+      // If parse is successful, proceed with saving
       const response = await fetch("/api/account-details", {
         method: "POST",
         headers: {
@@ -153,14 +203,32 @@ export default function MyAccountDialog({ open, onOpenChange }) {
       alert("Your account details were saved successfully!");
       onOpenChange(false);
     } catch (err) {
-      // If Zod validation fails, show error messages
+      // If Zod validation fails, show error messages & scroll to first invalid field
       if (err.name === "ZodError") {
         const errors = {};
+        let scrolled = false;
+
         err.issues.forEach((issue) => {
-          // For example, "userName" is the path
           const fieldName = issue.path[0];
           errors[fieldName] = issue.message;
+
+          // Scroll to the first error encountered
+          if (!scrolled) {
+            if (fieldName === "userName") {
+              userNameRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            } else if (fieldName === "companyName") {
+              companyNameRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            }
+            scrolled = true;
+          }
         });
+
         setFormErrors(errors);
       } else {
         // Some other error (network, etc.)
@@ -201,17 +269,17 @@ export default function MyAccountDialog({ open, onOpenChange }) {
               </h3>
               <div className="flex flex-col space-y-4">
                 {/* Your Name */}
-                <div>
+                <div ref={userNameRef}>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Your Name <span className="text-red-500">*</span>
                   </label>
                   <Input
                     placeholder="Enter your full name"
                     className={`w-full ${
-                      formErrors.userName ? "border border-red-500" : ""
+                      formErrors.userName ? "border-red-500" : ""
                     }`}
                     value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
+                    onChange={(e) => handleUserNameChange(e.target.value)}
                   />
                   {formErrors.userName && (
                     <p className="text-red-500 text-sm mt-1">
@@ -234,17 +302,17 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                 </div>
 
                 {/* Company Name */}
-                <div>
+                <div ref={companyNameRef}>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Company Name <span className="text-red-500">*</span>
                   </label>
                   <Input
                     placeholder="Enter your company name"
                     className={`w-full ${
-                      formErrors.companyName ? "border border-red-500" : ""
+                      formErrors.companyName ? "border-red-500" : ""
                     }`}
                     value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                    onChange={(e) => handleCompanyNameChange(e.target.value)}
                   />
                   {formErrors.companyName && (
                     <p className="text-red-500 text-sm mt-1">
