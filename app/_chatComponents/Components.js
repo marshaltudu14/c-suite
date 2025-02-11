@@ -1,15 +1,13 @@
 "use client";
-
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronsDown } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
 
 /**
  * Typing indicator (animated three dots) for when the message is "..."
  */
 function TypingAnimation() {
-  // Each dot bounces in sequence using staggered delays
   return (
     <div className="flex items-center space-x-1">
       <motion.span
@@ -121,12 +119,78 @@ function ThinkSegmentAccordion({ text }) {
  * MessageBubble for each chat message.
  * - If the content is "...", show the TypingAnimation.
  * - Otherwise parse normal text and <think> segments.
+ * - For assistant messages, speak only fully ended sentences (ending in ".")
+ *   while skipping <think> content.
  */
 export function MessageBubble({ message }) {
   const isUser = message.role === "user";
   const content = message.content.trim();
 
-  // If the message is just three dots, show the typing animation
+  // Track "visible" text that has been spoken so far
+  const [accumulatedText, setAccumulatedText] = useState("");
+  // Track leftover partial sentence that hasn't ended in '.'
+  const leftoverRef = useRef("");
+
+  // Speak function using the Web Speech API
+  function speak(text) {
+    if (!window || !window.speechSynthesis) {
+      console.log("[TTS] Web Speech API not supported in this environment.");
+      return;
+    }
+    console.log("[TTS] Speaking text:", text);
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  useEffect(() => {
+    // Only process for the assistant's messages
+    if (message.role !== "assistant") return;
+    if (!content) return;
+
+    // 1) Parse out <think> segments; keep only normal text
+    const segments = parseThinkTags(content).filter((seg) => !seg.isThink);
+    const visibleText = segments.map((seg) => seg.text).join("");
+
+    // 2) Compare new visible text to what we've already accounted for
+    const newSegment = visibleText.slice(accumulatedText.length);
+
+    console.log("[TTS] Full visible text so far:", visibleText);
+    console.log("[TTS] Already accumulated:", accumulatedText);
+    console.log("[TTS] New segment to speak:", newSegment);
+
+    if (!newSegment) {
+      console.log("[TTS] No new text to speak, returning early.");
+      return;
+    }
+
+    // 3) Update the accumulated text state
+    setAccumulatedText(visibleText);
+
+    // 4) Combine leftover partial with newly arrived text
+    const combined = leftoverRef.current + newSegment;
+    console.log("[TTS] Combined leftover + new segment:", combined);
+
+    // 5) Split by '.' to detect full sentences
+    const parts = combined.split(".");
+    // Everything but the last item in `parts` are guaranteed to end in '.'
+    const fullSentences = parts.slice(0, -1);
+    // The last piece may be incomplete
+    leftoverRef.current = parts[parts.length - 1] || "";
+
+    console.log("[TTS] Found full sentences:", fullSentences);
+    console.log("[TTS] Leftover partial sentence:", leftoverRef.current);
+
+    // 6) Speak each fully ended sentence
+    fullSentences.forEach((sentence) => {
+      const speakable = sentence.trim() + ".";
+      // Ensure it's not empty or whitespace
+      if (speakable.trim() !== ".") {
+        speak(speakable);
+      }
+    });
+  }, [content, message.role, accumulatedText]);
+
+  // If the content is just "..." => show typing animation
   if (content === "...") {
     return (
       <motion.div
@@ -146,7 +210,7 @@ export function MessageBubble({ message }) {
     );
   }
 
-  // Otherwise, parse the message content for normal/think segments
+  // Otherwise parse <think> segments for visual rendering
   const segments = parseThinkTags(content);
 
   return (
@@ -164,7 +228,7 @@ export function MessageBubble({ message }) {
     >
       {segments.map((segment, idx) => {
         if (segment.isThink) {
-          // Renders as an accordion
+          // Renders the "think" text as an accordion
           return <ThinkSegmentAccordion key={idx} text={segment.text} />;
         }
         // Normal text
