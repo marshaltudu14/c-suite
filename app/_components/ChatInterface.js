@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useChat } from "ai/react"; // Vercel AI
-
+import { Loader2, Send } from "lucide-react";
 import { executivesData, employeesData } from "@/app/_components/OfficeData";
 import ContactsList from "@/app/_chatComponents/ContactList";
 import ChatTopBar from "@/app/_chatComponents/ChatTopBar";
@@ -11,18 +11,14 @@ import {
   MessageBubble,
   ScrollToBottomButton,
 } from "@/app/_chatComponents/Components";
-
-import { createClient } from "@/utils/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
-import { Send } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
 export default function ChatInterfacePage({ systemPrompt }) {
+  const router = useRouter();
   const pathname = usePathname();
 
-  // 1) Use the Vercel AI "useChat" hook,
-  //    specifying our custom Ollama endpoint.
-  //    Also set "initialMessages" so the system prompt is included at the start.
-  //    We'll filter out system messages so the user never sees them in the UI.
+  // Vercel AI chat hook
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
       endpoint: "/api/chat",
@@ -50,29 +46,39 @@ export default function ChatInterfacePage({ systemPrompt }) {
   const chatContainerRef = useRef(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
-  /* ------------------- LEFT PANEL LOGIC -------------------- */
+  // ----------------------------------------------------------------
+  // Unified user check in a single useEffect block
+  // ----------------------------------------------------------------
   useEffect(() => {
-    // (Optional) fetch user from Supabase
-    const getUserSession = async () => {
+    (async () => {
+      setLoadingUser(true);
       try {
-        const supabase = createClient();
-        const {
-          data: { user: currentUser },
-          error,
-        } = await supabase.auth.getUser();
+        const supabase = await createClient();
+        const { data, error } = await supabase.auth.getUser();
 
-        if (error) console.error("Error fetching user:", error);
-        setUser(currentUser);
+        if (error) {
+          console.error("Error fetching user:", error);
+          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          return;
+        }
+
+        if (!data?.user) {
+          // If user is null, force a login
+          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          return;
+        }
+
+        setUser(data.user);
       } catch (err) {
-        console.error("Error in getUserSession:", err);
+        console.error("Error checking user:", err);
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       } finally {
         setLoadingUser(false);
       }
-    };
-    getUserSession();
-  }, []);
+    })();
+  }, [router, pathname]);
 
-  // (Optional) fetch last chat previews
+  // (Optional) fetch last chat previews after we have a user
   useEffect(() => {
     if (!user) return;
     const fetchLastChats = async () => {
@@ -81,12 +87,10 @@ export default function ChatInterfacePage({ systemPrompt }) {
         executivesData.forEach((exec) => {
           newExecutiveChats[exec.id] = `Last chat with ${exec.name}`;
         });
-
         const newEmployeeChats = {};
         employeesData.forEach((emp) => {
           newEmployeeChats[emp.id] = `Last chat with ${emp.name}`;
         });
-
         setExecutivesChats(newExecutiveChats);
         setEmployeesChats(newEmployeeChats);
       } catch (error) {
@@ -96,7 +100,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
     fetchLastChats();
   }, [user]);
 
-  /* ------------------- SCROLL / UI LOGIC -------------------- */
+  // ------------------- SCROLL / UI LOGIC -------------------- //
   const handleScroll = () => {
     if (!chatContainerRef.current) return;
     const { scrollTop, clientHeight, scrollHeight } = chatContainerRef.current;
@@ -124,8 +128,22 @@ export default function ChatInterfacePage({ systemPrompt }) {
   // Filter out system messages so they are never displayed to the end user
   const displayedMessages = messages.filter((msg) => msg.role !== "system");
 
+  // ----------------------------------------------------------------
+  // If we're still checking or user is invalid, show spinner
+  // ----------------------------------------------------------------
+  if (loadingUser || !user) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // Once the user is known to be valid, render the main interface
+  // ----------------------------------------------------------------
   return (
-    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden">
       {/* Left panel: only visible on md+ */}
       <ContactsList
         searchQuery={searchQuery}
@@ -152,16 +170,12 @@ export default function ChatInterfacePage({ systemPrompt }) {
           {displayedMessages.map((msg, idx) => (
             <MessageBubble
               key={idx}
-              // useChat messages have role === "user" or "assistant"
-              // We'll interpret "assistant" as "agent" to match your design
               message={{
                 role: msg.role === "assistant" ? "agent" : "user",
                 content: msg.content,
               }}
             />
           ))}
-
-          {/* Show a bubble or loader while AI is thinking */}
           {isLoading && (
             <MessageBubble message={{ role: "agent", content: "..." }} />
           )}
@@ -172,7 +186,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
           <ScrollToBottomButton onClick={scrollToBottom} />
         )}
 
-        {/* Sticky bottom input => useChat handles sending to /api/chat */}
+        {/* Sticky bottom input */}
         <div className="sticky bottom-0 z-10 p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex items-center space-x-2">
           <form onSubmit={handleSubmit} className="flex w-full items-center">
             <Textarea
@@ -181,7 +195,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
               placeholder="Enter your message..."
               value={input}
               onChange={handleInputChange}
-              className="resize-none transition-all w-full"
+              className="resize-none w-full"
               disabled={!selectedPerson || isLoading}
             />
             <button

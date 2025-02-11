@@ -1,6 +1,7 @@
-import LoginForm from "@/app/login/login-form";
-import { createClient } from "@/utils/supabase/server";
+// app/login/page.tsx
 import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
+import LoginForm from "./login-form";
 import Header from "../_components/Header";
 
 export async function generateMetadata() {
@@ -12,30 +13,32 @@ export async function generateMetadata() {
 
 export default async function LoginPage({ searchParams }) {
   const params = await searchParams;
+  // Get the redirect URL or default to "/my-account"
   const redirectUrl = params?.redirect || "/";
 
+  // Create Supabase client (returns a typed instance if you've defined Database)
   const supabase = await createClient();
+
+  // Check if the user is already logged in
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
 
   if (error) {
-    console.error("Error retreiving user:", error.message);
+    console.error("Error retrieving user:", error.message);
   }
 
   if (user) {
-    return redirect(redirectUrl);
+    // If the user is already logged in, redirect
+    redirect(redirectUrl);
   }
 
+  // If not logged in, show the login form
   return (
     <>
       <Header />
-      <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-        <div className="flex w-full max-w-sm flex-col gap-6">
-          <LoginForm />
-        </div>
-      </div>
+      <LoginForm />
     </>
   );
 }

@@ -13,13 +13,6 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
-/**
- * A dialog for "Settings," including a logout button.
- * Receives:
- *   - open (boolean) - whether dialog is open
- *   - onOpenChange (function) - callback to set open state
- */
-
 export default function SettingsDialog({ open, onOpenChange }) {
   const [user, setUser] = useState(null);
 
@@ -27,19 +20,17 @@ export default function SettingsDialog({ open, onOpenChange }) {
   useEffect(() => {
     async function getUser() {
       const supabase = await createClient();
-
       const { data: userData, error: userError } =
         await supabase.auth.getUser();
 
       if (userError || !userData?.user) {
         console.log("Error fetching user:", userError);
-        return;
       }
 
       setUser(userData.user);
     }
     getUser();
-  }, []);
+  }, [user]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
