@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { motion } from "framer-motion";
 import {
   Dialog,
@@ -20,6 +21,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
+// Define a Zod schema for your form fields
+const accountSchema = z.object({
+  userName: z.string().min(1, "Name is required."),
+  userRole: z.string().optional(),
+  companyName: z.string().min(1, "Company name is required."),
+  industryType: z.string().optional(),
+  industryStage: z.string().optional(),
+  industrySize: z.string().optional(),
+  companyDetails: z.string().optional(),
+  companyMission: z.string().optional(),
+  companyVision: z.string().optional(),
+  companyPolicy: z.string().optional(),
+  extraDetails: z.string().optional(),
+});
+
 export default function MyAccountDialog({ open, onOpenChange }) {
   // Local state for form fields
   const [userName, setUserName] = useState("");
@@ -33,6 +49,9 @@ export default function MyAccountDialog({ open, onOpenChange }) {
   const [companyVision, setCompanyVision] = useState("");
   const [companyPolicy, setCompanyPolicy] = useState("");
   const [extraDetails, setExtraDetails] = useState("");
+
+  // Local state for errors (from Zod)
+  const [formErrors, setFormErrors] = useState({});
 
   // Fetch existing account details whenever the dialog is opened
   useEffect(() => {
@@ -61,7 +80,7 @@ export default function MyAccountDialog({ open, onOpenChange }) {
           setCompanyPolicy(data.company_policy || "");
           setExtraDetails(data.extra_details || "");
         } else {
-          // If no data found, clear the fields (or leave them as they are)
+          // If no data found, clear the fields
           setUserName("");
           setUserRole("");
           setCompanyName("");
@@ -84,39 +103,69 @@ export default function MyAccountDialog({ open, onOpenChange }) {
     }
   }, [open]);
 
-  // Submit handler
+  // Validate using Zod and submit data
   async function handleSubmit() {
+    setFormErrors({});
+
+    // Attempt to parse data with Zod
     try {
+      const parsedData = accountSchema.parse({
+        userName,
+        userRole,
+        companyName,
+        industryType,
+        industryStage,
+        industrySize,
+        companyDetails,
+        companyMission,
+        companyVision,
+        companyPolicy,
+        extraDetails,
+      });
+
+      // If parse was successful, proceed with saving data
       const response = await fetch("/api/account-details", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_name: userName,
-          user_role: userRole,
-          company_name: companyName,
-          industry_type: industryType,
-          industry_stage: industryStage,
-          industry_size: industrySize,
-          company_details: companyDetails,
-          company_mission: companyMission,
-          company_vision: companyVision,
-          company_policy: companyPolicy,
-          extra_details: extraDetails,
+          user_name: parsedData.userName,
+          user_role: parsedData.userRole,
+          company_name: parsedData.companyName,
+          industry_type: parsedData.industryType,
+          industry_stage: parsedData.industryStage,
+          industry_size: parsedData.industrySize,
+          company_details: parsedData.companyDetails,
+          company_mission: parsedData.companyMission,
+          company_vision: parsedData.companyVision,
+          company_policy: parsedData.companyPolicy,
+          extra_details: parsedData.extraDetails,
         }),
       });
 
-      const data = await response.json();
+      const json = await response.json();
       if (!response.ok) {
-        alert(`Error: ${data.error || "Failed to save account details"}`);
+        alert(`Error: ${json.error || "Failed to save account details"}`);
         return;
       }
 
       alert("Your account details were saved successfully!");
       onOpenChange(false);
-    } catch (error) {
-      alert("An unexpected error occurred. Please try again.");
+    } catch (err) {
+      // If Zod validation fails, show error messages
+      if (err.name === "ZodError") {
+        const errors = {};
+        err.issues.forEach((issue) => {
+          // For example, "userName" is the path
+          const fieldName = issue.path[0];
+          errors[fieldName] = issue.message;
+        });
+        setFormErrors(errors);
+      } else {
+        // Some other error (network, etc.)
+        alert("An unexpected error occurred. Please try again.");
+      }
     }
   }
 
@@ -151,17 +200,27 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                 Personal Information
               </h3>
               <div className="flex flex-col space-y-4">
+                {/* Your Name */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Your Name <span className="text-red-500">*</span>
                   </label>
                   <Input
                     placeholder="Enter your full name"
-                    className="w-full"
+                    className={`w-full ${
+                      formErrors.userName ? "border border-red-500" : ""
+                    }`}
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                   />
+                  {formErrors.userName && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formErrors.userName}
+                    </p>
+                  )}
                 </div>
+
+                {/* User Role */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     User Role
@@ -173,16 +232,25 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     onChange={(e) => setUserRole(e.target.value)}
                   />
                 </div>
+
+                {/* Company Name */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Company Name <span className="text-red-500">*</span>
                   </label>
                   <Input
                     placeholder="Enter your company name"
-                    className="w-full"
+                    className={`w-full ${
+                      formErrors.companyName ? "border border-red-500" : ""
+                    }`}
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                   />
+                  {formErrors.companyName && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formErrors.companyName}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -193,12 +261,13 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                 Company &amp; Industry
               </h3>
               <div className="flex flex-col space-y-4">
+                {/* Industry Type */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Industry Type
                   </label>
                   <Select
-                    onValueChange={(value) => setIndustryType(value)}
+                    onValueChange={(val) => setIndustryType(val)}
                     value={industryType}
                   >
                     <SelectTrigger className="w-full">
@@ -211,12 +280,14 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Industry Stage */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Industry Stage
                   </label>
                   <Select
-                    onValueChange={(value) => setIndustryStage(value)}
+                    onValueChange={(val) => setIndustryStage(val)}
                     value={industryStage}
                   >
                     <SelectTrigger className="w-full">
@@ -229,6 +300,8 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Industry Size */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Industry Size
@@ -249,6 +322,7 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                 Additional Details
               </h3>
               <div className="flex flex-col space-y-4">
+                {/* Company Details */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     About Your Company
@@ -260,6 +334,8 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     onChange={(e) => setCompanyDetails(e.target.value)}
                   />
                 </div>
+
+                {/* Company Mission */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Company Mission
@@ -271,6 +347,8 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     onChange={(e) => setCompanyMission(e.target.value)}
                   />
                 </div>
+
+                {/* Company Vision */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Company Vision
@@ -282,6 +360,8 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     onChange={(e) => setCompanyVision(e.target.value)}
                   />
                 </div>
+
+                {/* Company Policy */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Company Policy
@@ -293,6 +373,8 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                     onChange={(e) => setCompanyPolicy(e.target.value)}
                   />
                 </div>
+
+                {/* Extra Details */}
                 <div>
                   <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
                     Extra Details
