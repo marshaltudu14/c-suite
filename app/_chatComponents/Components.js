@@ -41,6 +41,9 @@ function TypingAnimation() {
   );
 }
 
+/**
+ * Get a short excerpt of text (not directly used here, but useful for summarizing).
+ */
 export function getExcerpt(text = "", maxLength = 100) {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + "...";
@@ -119,6 +122,7 @@ function ThinkSegmentAccordion({ text }) {
 
 /**
  * Text-to-Speech helper function.
+ * Speaks the provided text if browser environment is available.
  */
 function speakText(text) {
   if (typeof window !== "undefined" && text) {
@@ -129,8 +133,8 @@ function speakText(text) {
 
 /**
  * MessageBubble for each chat message.
- * Reads only newly added sentences that end with ., ?, or !.
- * Ignores text inside <think> tags.
+ * Reads only newly added sentences that end with ., ?, or !,
+ * skipping anything in <think> tags.
  */
 export function MessageBubble({ message }) {
   const isUser = message.role === "user";
@@ -158,54 +162,58 @@ export function MessageBubble({ message }) {
 
   // Parse the message content for normal/think segments
   const segments = parseThinkTags(content);
-  // Combine non-think segments for TTS
+
+  // Combine all non-<think> text for TTS
   const nonThinkText = segments
     .filter((segment) => !segment.isThink)
     .map((segment) => segment.text)
     .join("");
 
-  // Refs to track old text and partial sentences
+  /**
+   * We use two refs to handle new vs old text:
+   * 1) prevTextRef: to detect if the new text is appended or changed drastically
+   * 2) accumulatorRef: to collect "incomplete" sentences until we get a ., ?, or !
+   */
   const prevTextRef = useRef("");
   const accumulatorRef = useRef("");
 
-  // Read out newly completed sentences
   useEffect(() => {
-    // Only attempt TTS for assistant messages
+    // Only do text-to-speech for assistant messages
     if (isUser) return;
 
-    // If no actual content changes, do nothing
-    if (nonThinkText === prevTextRef.current) {
-      return;
-    }
+    // If there's no new content, do nothing
+    if (nonThinkText === prevTextRef.current) return;
 
-    // Determine the new portion vs. old portion
+    // Check how the text changed
     let newPortion = "";
     if (nonThinkText.startsWith(prevTextRef.current)) {
-      // If new text starts with old text, slice the difference
+      // Typical streaming scenario: new text is appended
       newPortion = nonThinkText.slice(prevTextRef.current.length);
     } else {
-      // If the text changed drastically, reset the accumulator
+      // Drastic change, reset everything
       accumulatorRef.current = "";
       newPortion = nonThinkText;
     }
 
-    // Append new portion to accumulator
+    // Append any truly new text to the accumulator
     accumulatorRef.current += newPortion;
 
-    // Regex to find sentences ending with ., ?, or !
-    const sentenceRegex = /([^.!?]+[.!?])/g;
-    let match;
-    while ((match = sentenceRegex.exec(accumulatorRef.current)) !== null) {
-      // speakText for each full sentence
-      speakText(match[1].trim());
+    // Regex to find complete sentences ending with ., ?, or !
+    // This will return an array of all matched sentences, e.g. ["Hello!", " Is this new?"]
+    const matchedSentences = accumulatorRef.current.match(/[^.!?]+[.!?]/g);
+
+    if (matchedSentences && matchedSentences.length > 0) {
+      // Speak each matched sentence
+      matchedSentences.forEach((sentence) => {
+        speakText(sentence.trim());
+      });
+      // Remove these matched sentences from the accumulator
+      // We do this by summing the total length of matched sentences
+      const totalMatchedLength = matchedSentences.join("").length;
+      accumulatorRef.current = accumulatorRef.current.slice(totalMatchedLength);
     }
 
-    // Remove the matched portion from the accumulator
-    // so partial, not-yet-complete sentence remains
-    const lastIndex = sentenceRegex.lastIndex;
-    accumulatorRef.current = accumulatorRef.current.slice(lastIndex);
-
-    // Update the previous text marker
+    // Update previous text pointer
     prevTextRef.current = nonThinkText;
   }, [nonThinkText, isUser]);
 
@@ -224,10 +232,8 @@ export function MessageBubble({ message }) {
     >
       {segments.map((segment, idx) => {
         if (segment.isThink) {
-          // Renders as an accordion
           return <ThinkSegmentAccordion key={idx} text={segment.text} />;
         }
-        // Normal text
         return (
           <div key={idx} className="my-1 last:mb-0">
             <Markdown>{segment.text}</Markdown>
@@ -239,7 +245,7 @@ export function MessageBubble({ message }) {
 }
 
 /**
- * A button to scroll to the bottom of the chat
+ * A floating button to scroll to the bottom of the chat.
  */
 export function ScrollToBottomButton({ onClick }) {
   return (
