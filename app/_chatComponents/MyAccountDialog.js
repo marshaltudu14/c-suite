@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { z } from "zod";
 import { motion } from "framer-motion";
+import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -23,18 +23,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-// ------------------ Zod Schemas ------------------
-/*
-  Full schema for final validation on submit.
-  Only userName and companyName are strictly required.
-*/
-const accountSchema = z.object({
-  userName: z.string().min(1, "Name is required."),
+// Frontend Zod schema for real-time validation
+const formSchema = z.object({
+  userName: z.string().min(1, "User name is required"),
   userRole: z.string().optional(),
-  companyName: z.string().min(1, "Company name is required."),
+  companyName: z.string().min(1, "Company name is required"),
   industryType: z.string().optional(),
   industryStage: z.string().optional(),
-  industrySize: z.string().optional(),
+  industrySize: z
+    .string()
+    .regex(/^\d*$/, "Industry size must be an integer")
+    .optional()
+    .transform((val) => (val === "" ? null : val)),
   companyDetails: z.string().optional(),
   companyMission: z.string().optional(),
   companyVision: z.string().optional(),
@@ -42,12 +42,10 @@ const accountSchema = z.object({
   extraDetails: z.string().optional(),
 });
 
-// For real-time validation on key fields
-const userNameSchema = z.string().min(1, "Name is required.");
-const companyNameSchema = z.string().min(1, "Company name is required.");
-
 export default function MyAccountDialog({ open, onOpenChange }) {
-  // ------------------ State ------------------
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -60,29 +58,62 @@ export default function MyAccountDialog({ open, onOpenChange }) {
   const [companyPolicy, setCompanyPolicy] = useState("");
   const [extraDetails, setExtraDetails] = useState("");
 
-  // For form errors (Zod)
-  const [formErrors, setFormErrors] = useState({});
+  // Real-time validation errors
+  const [errors, setErrors] = useState({});
 
-  // Loading states
-  const [isLoading, setIsLoading] = useState(false); // For initial fetch
-  const [isSubmitting, setIsSubmitting] = useState(false); // For POST request
-
-  // Refs for scrolling on error
+  // Refs for scrolling to first error
   const userNameRef = useRef(null);
   const companyNameRef = useRef(null);
+  const industrySizeRef = useRef(null);
 
-  // ------------------ Fetch existing data on open ------------------
+  // Validate as user types using Zod
+  useEffect(() => {
+    const formValues = {
+      userName,
+      userRole,
+      companyName,
+      industryType,
+      industryStage,
+      industrySize,
+      companyDetails,
+      companyMission,
+      companyVision,
+      companyPolicy,
+      extraDetails,
+    };
+
+    const result = formSchema.safeParse(formValues);
+    if (!result.success) {
+      const newErrors = {};
+      for (const issue of result.error.issues) {
+        newErrors[issue.path[0]] = issue.message;
+      }
+      setErrors(newErrors);
+    } else {
+      setErrors({});
+    }
+  }, [
+    userName,
+    userRole,
+    companyName,
+    industryType,
+    industryStage,
+    industrySize,
+    companyDetails,
+    companyMission,
+    companyVision,
+    companyPolicy,
+    extraDetails,
+  ]);
+
+  // Fetch existing account details when dialog is opened
   useEffect(() => {
     async function fetchAccountDetails() {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/account-details", { method: "GET" });
-        if (!res.ok) {
-          console.error("Failed to fetch details:", res.statusText);
-          setIsLoading(false);
-          return;
-        }
-
+        const res = await fetch("/api/account-details", {
+          method: "GET",
+        });
         const { success, data, error } = await res.json();
         if (!success) {
           console.error("Failed to fetch details:", error);
@@ -90,21 +121,19 @@ export default function MyAccountDialog({ open, onOpenChange }) {
           return;
         }
 
-        // Populate state if data exists
         if (data) {
           setUserName(data.user_name || "");
           setUserRole(data.user_role || "");
           setCompanyName(data.company_name || "");
           setIndustryType(data.industry_type || "");
           setIndustryStage(data.industry_stage || "");
-          setIndustrySize(data.industry_size || "");
+          setIndustrySize(data.industry_size?.toString() || "");
           setCompanyDetails(data.company_details || "");
           setCompanyMission(data.company_mission || "");
           setCompanyVision(data.company_vision || "");
           setCompanyPolicy(data.company_policy || "");
           setExtraDetails(data.extra_details || "");
         } else {
-          // Clear fields if no data
           setUserName("");
           setUserRole("");
           setCompanyName("");
@@ -129,118 +158,66 @@ export default function MyAccountDialog({ open, onOpenChange }) {
     }
   }, [open]);
 
-  // ------------------ Real-time validation for required fields ------------------
-  function handleUserNameChange(value) {
-    setUserName(value);
-    const result = userNameSchema.safeParse(value);
-
-    setFormErrors((prevErrors) => {
-      const newErrors = { ...prevErrors };
-      if (result.success) {
-        delete newErrors.userName;
-      } else {
-        newErrors.userName = result.error.issues[0].message;
-      }
-      return newErrors;
-    });
+  // Scroll to the first error field
+  function scrollToFirstErrorField(errorField) {
+    switch (errorField) {
+      case "userName":
+        userNameRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
+      case "companyName":
+        companyNameRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
+      case "industrySize":
+        industrySizeRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
+      default:
+        break;
+    }
   }
 
-  function handleCompanyNameChange(value) {
-    setCompanyName(value);
-    const result = companyNameSchema.safeParse(value);
-
-    setFormErrors((prevErrors) => {
-      const newErrors = { ...prevErrors };
-      if (result.success) {
-        delete newErrors.companyName;
-      } else {
-        newErrors.companyName = result.error.issues[0].message;
-      }
-      return newErrors;
-    });
-  }
-
-  // ------------------ Final submit & form validation ------------------
+  // Submit handler
   async function handleSubmit() {
+    // Check for validation errors
+    const currentErrors = Object.keys(errors);
+    if (currentErrors.length > 0) {
+      scrollToFirstErrorField(currentErrors[0]);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      setFormErrors({});
-      setIsSubmitting(true);
-
-      // Validate entire form
-      const parsedData = accountSchema.parse({
-        userName,
-        userRole,
-        companyName,
-        industryType,
-        industryStage,
-        industrySize,
-        companyDetails,
-        companyMission,
-        companyVision,
-        companyPolicy,
-        extraDetails,
-      });
-
-      // Send POST request to /api/account-details
       const response = await fetch("/api/account-details", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_name: parsedData.userName,
-          user_role: parsedData.userRole,
-          company_name: parsedData.companyName,
-          industry_type: parsedData.industryType,
-          industry_stage: parsedData.industryStage,
-          industry_size: parsedData.industrySize,
-          company_details: parsedData.companyDetails,
-          company_mission: parsedData.companyMission,
-          company_vision: parsedData.companyVision,
-          company_policy: parsedData.companyPolicy,
-          extra_details: parsedData.extraDetails,
+          user_name: userName,
+          user_role: userRole,
+          company_name: companyName,
+          industry_type: industryType,
+          industry_stage: industryStage,
+          industry_size: industrySize,
+          company_details: companyDetails,
+          company_mission: companyMission,
+          company_vision: companyVision,
+          company_policy: companyPolicy,
+          extra_details: extraDetails,
         }),
       });
 
-      const json = await response.json();
-      if (!response.ok || !json.success) {
-        alert(`Error: ${json.error || "Failed to save account details"}`);
+      const data = await response.json();
+      if (!response.ok) {
+        alert(`Error: ${data.error || "Failed to save account details"}`);
         setIsSubmitting(false);
         return;
       }
 
       alert("Your account details were saved successfully!");
-      onOpenChange(false);
-    } catch (err) {
-      if (err.name === "ZodError") {
-        // Zod validation errors
-        const errors = {};
-        let scrolled = false;
-
-        err.issues.forEach((issue) => {
-          const fieldName = issue.path[0];
-          errors[fieldName] = issue.message;
-          // Scroll to first error
-          if (!scrolled) {
-            if (fieldName === "userName") {
-              userNameRef.current?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-            } else if (fieldName === "companyName") {
-              companyNameRef.current?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-            }
-            scrolled = true;
-          }
-        });
-
-        setFormErrors(errors);
-      } else {
-        alert("An unexpected error occurred. Please try again.");
-      }
+      // Do NOT close the dialog; remove or comment out this line:
+      // onOpenChange(false);
+    } catch (error) {
+      alert("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -270,227 +247,210 @@ export default function MyAccountDialog({ open, onOpenChange }) {
           </DialogHeader>
 
           {isLoading ? (
-            // Show a centered loader while fetching data
-            <div className="flex justify-center items-center mt-6">
-              <Loader2 className="animate-spin" />
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span className="ml-2">Loading details...</span>
             </div>
           ) : (
-            // Show the form once data is fetched
-            <div className="flex flex-col space-y-6 mt-4 w-full">
-              {/* Section 1: Personal Information */}
-              <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
-                <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
-                  Personal Information
-                </h3>
-                <div className="flex flex-col space-y-4">
-                  {/* Your Name */}
-                  <div ref={userNameRef}>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Your Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      placeholder="Enter your full name"
-                      className={`w-full ${
-                        formErrors.userName ? "border-red-500" : ""
-                      }`}
-                      value={userName}
-                      onChange={(e) => handleUserNameChange(e.target.value)}
-                    />
-                    {formErrors.userName && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {formErrors.userName}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* User Role */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      User Role
-                    </label>
-                    <Input
-                      placeholder="Enter your role"
-                      className="w-full"
-                      value={userRole}
-                      onChange={(e) => setUserRole(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Company Name */}
-                  <div ref={companyNameRef}>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Company Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      placeholder="Enter your company name"
-                      className={`w-full ${
-                        formErrors.companyName ? "border-red-500" : ""
-                      }`}
-                      value={companyName}
-                      onChange={(e) => handleCompanyNameChange(e.target.value)}
-                    />
-                    {formErrors.companyName && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {formErrors.companyName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Company & Industry */}
-              <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
-                <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
-                  Company &amp; Industry
-                </h3>
-                <div className="flex flex-col space-y-4">
-                  {/* Industry Type */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Industry Type
-                    </label>
-                    <Select
-                      onValueChange={(val) => setIndustryType(val)}
-                      value={industryType}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose industry type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="it-services">IT Services</SelectItem>
-                        <SelectItem value="industrial">Industrial</SelectItem>
-                        <SelectItem value="marketing">Marketing</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Industry Stage */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Industry Stage
-                    </label>
-                    <Select
-                      onValueChange={(val) => setIndustryStage(val)}
-                      value={industryStage}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose industry stage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="start-up">Start-up</SelectItem>
-                        <SelectItem value="mid-size">Mid-Size</SelectItem>
-                        <SelectItem value="big-size">Big-Size</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Industry Size */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Industry Size
-                    </label>
-                    <Input
-                      placeholder="e.g. 50 employees"
-                      className="w-full"
-                      value={industrySize}
-                      onChange={(e) => setIndustrySize(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Additional Details */}
-              <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
-                <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
-                  Additional Details
-                </h3>
-                <div className="flex flex-col space-y-4">
-                  {/* Company Details */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      About Your Company
-                    </label>
-                    <Textarea
-                      placeholder="Briefly describe your company"
-                      className="w-full"
-                      value={companyDetails}
-                      onChange={(e) => setCompanyDetails(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Company Mission */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Company Mission
-                    </label>
-                    <Textarea
-                      placeholder="Describe your company's mission"
-                      className="w-full"
-                      value={companyMission}
-                      onChange={(e) => setCompanyMission(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Company Vision */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Company Vision
-                    </label>
-                    <Textarea
-                      placeholder="Share the vision statement"
-                      className="w-full"
-                      value={companyVision}
-                      onChange={(e) => setCompanyVision(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Company Policy */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Company Policy
-                    </label>
-                    <Textarea
-                      placeholder="Outline any essential policies"
-                      className="w-full"
-                      value={companyPolicy}
-                      onChange={(e) => setCompanyPolicy(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Extra Details */}
-                  <div>
-                    <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                      Extra Details
-                    </label>
-                    <Textarea
-                      placeholder="Add any additional info here"
-                      className="w-full"
-                      value={extraDetails}
-                      onChange={(e) => setExtraDetails(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <div>
-                <Button
-                  variant="default"
-                  className="w-full"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center">
-                      <Loader2 className="mr-2 animate-spin" />
-                      Saving...
+            <>
+              <div className="flex flex-col space-y-6 mt-4 w-full">
+                {/* Personal Information */}
+                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
+                  <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
+                    Personal Information
+                  </h3>
+                  <div className="flex flex-col space-y-4">
+                    <div ref={userNameRef}>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Your Name <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="userName"
+                        placeholder="Enter your full name"
+                        className="w-full"
+                        value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                      />
+                      {errors.userName && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.userName}
+                        </p>
+                      )}
                     </div>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        User Role
+                      </label>
+                      <Input
+                        placeholder="Enter your role"
+                        className="w-full"
+                        value={userRole}
+                        onChange={(e) => setUserRole(e.target.value)}
+                      />
+                    </div>
+                    <div ref={companyNameRef}>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Company Name <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="companyName"
+                        placeholder="Enter your company name"
+                        className="w-full"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                      />
+                      {errors.companyName && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.companyName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company & Industry */}
+                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
+                  <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
+                    Company &amp; Industry
+                  </h3>
+                  <div className="flex flex-col space-y-4">
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Industry Type
+                      </label>
+                      <Select
+                        onValueChange={(value) => setIndustryType(value)}
+                        value={industryType}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose industry type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="it-services">
+                            IT Services
+                          </SelectItem>
+                          <SelectItem value="industrial">Industrial</SelectItem>
+                          <SelectItem value="marketing">Marketing</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Industry Stage
+                      </label>
+                      <Select
+                        onValueChange={(value) => setIndustryStage(value)}
+                        value={industryStage}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose industry stage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="start-up">Start-up</SelectItem>
+                          <SelectItem value="mid-size">Mid-Size</SelectItem>
+                          <SelectItem value="big-size">Big-Size</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div ref={industrySizeRef}>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        No. of Employees
+                      </label>
+                      <Input
+                        id="industrySize"
+                        placeholder="e.g. 50 employees"
+                        className="w-full"
+                        value={industrySize}
+                        onChange={(e) => setIndustrySize(e.target.value)}
+                      />
+                      {errors.industrySize && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.industrySize}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Details */}
+                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
+                  <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
+                    Additional Details
+                  </h3>
+                  <div className="flex flex-col space-y-4">
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        About Your Company
+                      </label>
+                      <Textarea
+                        placeholder="Briefly describe your company"
+                        className="w-full"
+                        value={companyDetails}
+                        onChange={(e) => setCompanyDetails(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Company Mission
+                      </label>
+                      <Textarea
+                        placeholder="Describe your company's mission"
+                        className="w-full"
+                        value={companyMission}
+                        onChange={(e) => setCompanyMission(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Company Vision
+                      </label>
+                      <Textarea
+                        placeholder="Share the vision statement"
+                        className="w-full"
+                        value={companyVision}
+                        onChange={(e) => setCompanyVision(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Company Policy
+                      </label>
+                      <Textarea
+                        placeholder="Outline any essential policies"
+                        className="w-full"
+                        value={companyPolicy}
+                        onChange={(e) => setCompanyPolicy(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
+                        Extra Details
+                      </label>
+                      <Textarea
+                        placeholder="Add any additional info here"
+                        className="w-full"
+                        value={extraDetails}
+                        onChange={(e) => setExtraDetails(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Button
+                    variant="default"
+                    className="w-full flex items-center justify-center"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    Save Changes
+                  </Button>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </motion.div>
       </DialogContent>
