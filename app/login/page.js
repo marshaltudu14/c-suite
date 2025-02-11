@@ -1,6 +1,7 @@
 import LoginForm from "@/app/login/login-form";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import Header from "../_components/Header";
 
 export async function generateMetadata() {
   return {
@@ -28,10 +29,13 @@ export default async function LoginPage({ searchParams }) {
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <LoginForm />
+    <>
+      <Header />
+      <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="flex w-full max-w-sm flex-col gap-6">
+          <LoginForm />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
