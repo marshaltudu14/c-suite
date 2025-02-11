@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronsDown } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
 
 /**
@@ -118,9 +118,19 @@ function ThinkSegmentAccordion({ text }) {
 }
 
 /**
+ * Text-to-Speech helper function.
+ */
+function speakText(text) {
+  if (typeof window !== "undefined" && text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+/**
  * MessageBubble for each chat message.
- * - If the content is "...", show the TypingAnimation.
- * - Otherwise parse normal text and <think> segments.
+ * Reads only newly added sentences that end with ., ?, or !.
+ * Ignores text inside <think> tags.
  */
 export function MessageBubble({ message }) {
   const isUser = message.role === "user";
@@ -146,8 +156,58 @@ export function MessageBubble({ message }) {
     );
   }
 
-  // Otherwise, parse the message content for normal/think segments
+  // Parse the message content for normal/think segments
   const segments = parseThinkTags(content);
+  // Combine non-think segments for TTS
+  const nonThinkText = segments
+    .filter((segment) => !segment.isThink)
+    .map((segment) => segment.text)
+    .join("");
+
+  // Refs to track old text and partial sentences
+  const prevTextRef = useRef("");
+  const accumulatorRef = useRef("");
+
+  // Read out newly completed sentences
+  useEffect(() => {
+    // Only attempt TTS for assistant messages
+    if (isUser) return;
+
+    // If no actual content changes, do nothing
+    if (nonThinkText === prevTextRef.current) {
+      return;
+    }
+
+    // Determine the new portion vs. old portion
+    let newPortion = "";
+    if (nonThinkText.startsWith(prevTextRef.current)) {
+      // If new text starts with old text, slice the difference
+      newPortion = nonThinkText.slice(prevTextRef.current.length);
+    } else {
+      // If the text changed drastically, reset the accumulator
+      accumulatorRef.current = "";
+      newPortion = nonThinkText;
+    }
+
+    // Append new portion to accumulator
+    accumulatorRef.current += newPortion;
+
+    // Regex to find sentences ending with ., ?, or !
+    const sentenceRegex = /([^.!?]+[.!?])/g;
+    let match;
+    while ((match = sentenceRegex.exec(accumulatorRef.current)) !== null) {
+      // speakText for each full sentence
+      speakText(match[1].trim());
+    }
+
+    // Remove the matched portion from the accumulator
+    // so partial, not-yet-complete sentence remains
+    const lastIndex = sentenceRegex.lastIndex;
+    accumulatorRef.current = accumulatorRef.current.slice(lastIndex);
+
+    // Update the previous text marker
+    prevTextRef.current = nonThinkText;
+  }, [nonThinkText, isUser]);
 
   return (
     <motion.div
