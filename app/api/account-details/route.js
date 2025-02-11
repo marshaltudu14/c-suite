@@ -69,6 +69,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const supabase = await createClient();
   try {
     const body = await request.json();
     // Validate input using Zod
