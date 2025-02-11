@@ -1,4 +1,5 @@
 "use client";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronsDown } from "lucide-react";
 import React, { useState } from "react";
@@ -99,7 +100,6 @@ function ThinkSegmentAccordion({ text }) {
       >
         {isOpen ? "Hide Internal Thinking" : "Show Internal Thinking"}
       </button>
-
       <AnimatePresence>
         {isOpen && (
           <motion.div

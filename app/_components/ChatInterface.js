@@ -22,6 +22,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
   // 1) Use the Vercel AI "useChat" hook,
   //    specifying our custom Ollama endpoint.
   //    Also set "initialMessages" so the system prompt is included at the start.
+  //    We'll filter out system messages so the user never sees them in the UI.
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
       endpoint: "/api/chat",
@@ -120,6 +121,9 @@ export default function ChatInterfacePage({ systemPrompt }) {
     scrollToBottom();
   }, [messages]);
 
+  // Filter out system messages so they are never displayed to the end user
+  const displayedMessages = messages.filter((msg) => msg.role !== "system");
+
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-900">
       {/* Left panel: only visible on md+ */}
@@ -145,7 +149,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2"
         >
-          {messages.map((msg, idx) => (
+          {displayedMessages.map((msg, idx) => (
             <MessageBubble
               key={idx}
               // useChat messages have role === "user" or "assistant"

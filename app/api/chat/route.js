@@ -1,3 +1,4 @@
+// app/api/chat/route.js
 import { createOllama } from "ollama-ai-provider";
 import { streamText } from "ai";
 
@@ -16,7 +17,7 @@ export async function POST(req) {
       });
     }
 
-    // Call Ollama with your chosen model (e.g., llama3.1)
+    // Call Ollama with your chosen model
     const result = await streamText({
       model: ollama("deepseek-r1:1.5b"),
       messages,
