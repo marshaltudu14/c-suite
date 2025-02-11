@@ -18,12 +18,13 @@ import {
 // Import our separated dialog components
 import MyAccountDialog from "@/app/_chatComponents/MyAccountDialog";
 import SettingsDialog from "@/app/_chatComponents/SettingsDialog";
+import Image from "next/image";
 
 /**
  * A top bar (header) with a back button, theme switcher,
  * "My Account" dialog, and a "Settings" dialog containing a Logout button.
  */
-export default function ChatTopBar() {
+export default function ChatTopBar({ selectedPerson }) {
   const router = useRouter();
 
   // Dialog states
@@ -50,9 +51,31 @@ export default function ChatTopBar() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            Chat
-          </h2>
+          {selectedPerson?.image ? (
+            <Image
+              src={selectedPerson.image}
+              alt={selectedPerson.name}
+              width={32}
+              height={32}
+              className="rounded-full object-cover"
+            />
+          ) : (
+            <Skeleton className="w-8 h-8 rounded-full" />
+          )}
+          <div className="flex flex-col">
+            {selectedPerson ? (
+              <>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {selectedPerson.name}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {selectedPerson.position}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-red-500">User</p>
+            )}
+          </div>
         </div>
 
         {/* Right group: theme switcher + dropdown */}
