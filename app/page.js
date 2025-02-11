@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, X } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 
@@ -57,16 +57,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const getUserSession = async () => {
       try {
-        const supabase = createClient();
-        const {
-          data: { user: currentUser },
-          error,
-        } = await supabase.auth.getUser();
+        const supabase = await createClient();
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
 
-        if (error) {
+        if (userError || !userData?.user) {
           console.error("Error fetching user:", error);
         } else {
-          setUser(currentUser);
+          setUser(userData.error);
         }
       } catch (err) {
         console.error("Error in getUserSession:", err);
@@ -122,7 +120,7 @@ export default function DashboardPage() {
   if (loadingUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600 dark:text-gray-300">Loading user...</p>
+        <Loader2 className="animate-spin" />
       </div>
     );
   }
