@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-// Zod schema ensuring `user_name` and `company_name` are required
+// Zod schema ensuring required fields
 const accountDetailsSchema = z.object({
   user_name: z.string().min(1, "user_name is required"),
   user_role: z.string().optional(),
@@ -18,9 +18,11 @@ const accountDetailsSchema = z.object({
 });
 
 export async function GET() {
+  console.log("GET is working.");
   const supabase = await createClient();
 
   try {
+    // Get the currently authenticated user
     const {
       data: { user },
       error: userError,
@@ -40,12 +42,12 @@ export async function GET() {
       );
     }
 
-    // Query account_details for this user
+    // Fetch the existing account details for this user
     const { data, error } = await supabase
       .from("account_details")
       .select("*")
       .eq("user_id", user.id)
-      .single(); // single() returns the first record or null
+      .single();
 
     if (error) {
       return NextResponse.json(
@@ -55,10 +57,6 @@ export async function GET() {
     }
 
     // If no row found, data will be null
-    if (!data) {
-      return NextResponse.json({ success: true, data: null }, { status: 200 });
-    }
-
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (err) {
     return NextResponse.json(
@@ -69,13 +67,15 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  console.log("POST is working.");
   const supabase = await createClient();
+
   try {
     const body = await request.json();
     // Validate input using Zod
     const formData = accountDetailsSchema.parse(body);
 
-    // Attempt to get the currently logged-in user
+    // Get the authenticated user
     const {
       data: { user },
       error: userError,
@@ -95,21 +95,26 @@ export async function POST(request) {
       );
     }
 
-    // Insert or upsert into "account_details" table
-    const { error, data } = await supabase.from("account_details").upsert({
-      user_id: user.id,
-      user_name: formData.user_name,
-      user_role: formData.user_role,
-      company_name: formData.company_name,
-      industry_type: formData.industry_type,
-      industry_stage: formData.industry_stage,
-      industry_size: formData.industry_size,
-      company_details: formData.company_details,
-      company_mission: formData.company_mission,
-      company_vision: formData.company_vision,
-      company_policy: formData.company_policy,
-      extra_details: formData.extra_details,
-    });
+    // Upsert into "account_details" table using user_id as the unique key
+    const { data, error } = await supabase.from("account_details").upsert(
+      [
+        {
+          user_id: user.id,
+          user_name: formData.user_name,
+          user_role: formData.user_role,
+          company_name: formData.company_name,
+          industry_type: formData.industry_type,
+          industry_stage: formData.industry_stage,
+          industry_size: formData.industry_size,
+          company_details: formData.company_details,
+          company_mission: formData.company_mission,
+          company_vision: formData.company_vision,
+          company_policy: formData.company_policy,
+          extra_details: formData.extra_details,
+        },
+      ],
+      { onConflict: "user_id" } // Make sure user_id has a unique constraint!
+    );
 
     if (error) {
       return NextResponse.json(
