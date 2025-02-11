@@ -1,5 +1,6 @@
 import LoginForm from "@/app/login/login-form";
 import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 
 export async function generateMetadata() {
   return {

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, MoreVertical } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
+import { logout } from "./action";
 
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
@@ -48,17 +49,6 @@ export default function ChatTopBar() {
   // States for opening/closing dialogs
   const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-
-  // Logout handler
-  async function handleLogout() {
-    try {
-      await supabase.auth.signOut();
-      router.push("/");
-    } catch (error) {
-      console.error("Logout error:", error);
-      // You might show a toast notification or alert in real-world usage
-    }
-  }
 
   return (
     <motion.div
@@ -319,7 +309,7 @@ export default function ChatTopBar() {
                 <Button
                   variant="destructive"
                   className="w-full"
-                  onClick={handleLogout}
+                  onClick={logout}
                 >
                   Logout
                 </Button>
