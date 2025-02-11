@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 
 export async function updateSession(request) {
   let supabaseResponse = NextResponse.next({
-    request,
+    request: {
+      headers: request.headers,
+    },
   });
 
   const supabase = createServerClient(
@@ -15,7 +17,7 @@ export async function updateSession(request) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
@@ -35,7 +37,7 @@ export async function updateSession(request) {
 
   // IMPORTANT: DO NOT REMOVE auth.getUser()
 
-  /* const {
+  /*  const {
     data: { user },
   } = await supabase.auth.getUser();
 
