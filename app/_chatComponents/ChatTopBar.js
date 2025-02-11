@@ -19,12 +19,6 @@ import {
 import MyAccountDialog from "@/app/_chatComponents/MyAccountDialog";
 import SettingsDialog from "@/app/_chatComponents/SettingsDialog";
 
-// Initialize Supabase client (assuming environment variables are set)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
 /**
  * A top bar (header) with a back button, theme switcher,
  * "My Account" dialog, and a "Settings" dialog containing a Logout button.

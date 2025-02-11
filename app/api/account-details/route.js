@@ -1,11 +1,6 @@
+import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 // Zod schema ensuring `user_name` and `company_name` are required
 const accountDetailsSchema = z.object({
@@ -23,6 +18,8 @@ const accountDetailsSchema = z.object({
 });
 
 export async function GET() {
+  const supabase = await createClient();
+
   try {
     const {
       data: { user },
