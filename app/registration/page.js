@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import SignupForm from "./signup-form";
 import { redirect as nextRedirect } from "next/navigation";
+import Header from "../_components/Header";
 
 export const metadata = {
   title: "Create an Account",
@@ -20,5 +21,10 @@ export default async function SignupPage({ params }) {
   if (user) {
     nextRedirect(redirectUrl);
   }
-  return <SignupForm />;
+  return (
+    <>
+      <Header />
+      <SignupForm />
+    </>
+  );
 }
