@@ -21,7 +21,6 @@ const accountDetailsSchema = z.object({
 });
 
 export async function GET() {
-  console.log("GET is working.");
   const supabase = await createClient();
 
   try {

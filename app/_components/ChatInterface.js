@@ -42,6 +42,9 @@ export default function ChatInterfacePage({ systemPrompt }) {
   const [employeesChats, setEmployeesChats] = useState({});
   const [loadingUser, setLoadingUser] = useState(true);
 
+  // Fetch other data
+  const [userDetails, setUserDetails] = useState([]);
+
   // Scrolling logic
   const chatContainerRef = useRef(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -77,6 +80,29 @@ export default function ChatInterfacePage({ systemPrompt }) {
       }
     })();
   }, [router, pathname]);
+
+  // Fetch User Details
+  useEffect(() => {
+    async function getUserDetails() {
+      try {
+        const res = await fetch("/api/account-details", {
+          method: "GET",
+        });
+        const { success, data, error } = await res.json();
+        if (!success) {
+          console.error("Failed to fetch details:", error);
+          return;
+        }
+
+        if (data) {
+          setUserDetails(data);
+        }
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+      }
+    }
+    getUserDetails();
+  }, []);
 
   // (Optional) fetch last chat previews after we have a user
   useEffect(() => {
