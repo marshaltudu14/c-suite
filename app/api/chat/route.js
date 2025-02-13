@@ -8,19 +8,11 @@ export async function POST(req) {
   try {
     const { messages, systemPrompt } = await req.json();
 
-    // If a system prompt is provided, prepend it as the first message
-    // so it influences the entire conversation
-    if (systemPrompt) {
-      messages.unshift({
-        role: "system",
-        content: systemPrompt,
-      });
-    }
-
     // Call Ollama with your chosen model
     const result = await streamText({
       model: ollama("deepseek-r1:1.5b"),
       messages,
+      system: systemPrompt,
     });
 
     // Return a data-stream response for incremental streaming
