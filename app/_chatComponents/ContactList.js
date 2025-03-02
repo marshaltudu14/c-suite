@@ -97,7 +97,7 @@ export default function ContactsList({
                     <motion.div key={exec.id} variants={itemVariants}>
                       <Link href={linkHref}>
                         <div
-                          className={`group flex w-full cursor-pointer items-start space-x-3 rounded-2xl bg-white px-4 py-3 shadow hover:shadow-lg transition dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-50 ${
+                          className={`group flex w-full cursor-pointer items-start space-x-3 rounded-lg px-4 py-3 transition bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700 hover:bg-slate-200 border ${
                             isActive ? "ring-2 ring-blue-400" : ""
                           }`}
                         >
@@ -163,7 +163,7 @@ export default function ContactsList({
                     <motion.div key={emp.id} variants={itemVariants}>
                       <Link href={linkHref}>
                         <div
-                          className={`group flex w-full cursor-pointer items-start space-x-3 rounded-2xl bg-white px-4 py-3 shadow hover:shadow-lg transition dark:bg-gray-800 dark:hover:bg-gray-700 hover:bg-gray-50 ${
+                          className={`group flex w-full cursor-pointer items-start space-x-3 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700 hover:bg-slate-200 border ${
                             isActive ? "ring-2 ring-blue-400" : ""
                           }`}
                         >

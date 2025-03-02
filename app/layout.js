@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata() {
-  const siteTitle = "C-Suite";
-  const siteDescription = "C-Suite";
+  const siteTitle = "Nayex";
+  const siteDescription = "Nayex";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const ogImage = `${siteUrl}/opengraph-image.png`;
 

@@ -18,14 +18,8 @@ export default function ChatInterfacePage({ systemPrompt }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Vercel AI chat hook
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat({
-      endpoint: "/api/chat",
-      initialMessages: systemPrompt
-        ? [{ role: "system", content: systemPrompt }]
-        : [],
-    });
+  // Fetch other data
+  const [companyDetails, setcompanyDetails] = useState([]);
 
   // Identify if it's /office/executive/<id> or /office/employee/<id>
   const pathParts = pathname.split("/");
@@ -35,15 +29,20 @@ export default function ChatInterfacePage({ systemPrompt }) {
   const dataList = isExecutive ? executivesData : employeesData;
   const selectedPerson = dataList.find((item) => item.id === personId) || null;
 
+  // Vercel AI chat hook
+  const { messages, input, handleInputChange, handleSubmit, isLoading } =
+    useChat({
+      endpoint: "/api/chat",
+      body: { systemPrompt, companyDetails, selectedPerson },
+      initialMessages: [],
+    });
+
   // Left panel states
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState(null);
   const [executivesChats, setExecutivesChats] = useState({});
   const [employeesChats, setEmployeesChats] = useState({});
   const [loadingUser, setLoadingUser] = useState(true);
-
-  // Fetch other data
-  const [userDetails, setUserDetails] = useState([]);
 
   // Scrolling logic
   const chatContainerRef = useRef(null);
@@ -83,7 +82,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
 
   // Fetch User Details
   useEffect(() => {
-    async function getUserDetails() {
+    async function getcompanyDetails() {
       try {
         const res = await fetch("/api/account-details", {
           method: "GET",
@@ -95,13 +94,13 @@ export default function ChatInterfacePage({ systemPrompt }) {
         }
 
         if (data) {
-          setUserDetails(data);
+          setcompanyDetails(data);
         }
       } catch (error) {
         console.error("Error fetching user details:", error);
       }
     }
-    getUserDetails();
+    getcompanyDetails();
   }, []);
 
   // (Optional) fetch last chat previews after we have a user
@@ -213,7 +212,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
         )}
 
         {/* Sticky bottom input */}
-        <div className="sticky bottom-0 z-10 p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex items-center space-x-2">
+        <div className="sticky bottom-0 z-10 p-3 border-t flex items-center space-x-2">
           <form onSubmit={handleSubmit} className="flex w-full items-center">
             <Textarea
               name="prompt"

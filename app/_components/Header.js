@@ -49,7 +49,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo / Title */}
         <Link href="/">
-          <div className="font-bold tracking-tight">C-Suite</div>
+          <div className="font-bold tracking-wider">NAYEX</div>
         </Link>
 
         {/* Right Side */}

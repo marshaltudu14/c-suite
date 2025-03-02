@@ -205,7 +205,7 @@ export function MessageBubble({ message }) {
     if (matchedSentences && matchedSentences.length > 0) {
       // Speak each matched sentence
       matchedSentences.forEach((sentence) => {
-        speakText(sentence.trim());
+        //speakText(sentence.trim());
       });
       // Remove these matched sentences from the accumulator
       // We do this by summing the total length of matched sentences
