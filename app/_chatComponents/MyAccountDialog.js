@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Building2,
+  Briefcase,
+  FileText,
+  AlertCircle,
+} from "lucide-react";
 
 import {
   Dialog,
@@ -22,29 +29,61 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 // Frontend Zod schema for real-time validation
+const MAX_TEXTAREA_CHARS = 1000;
+const MAX_INPUT_CHARS = 250;
+
 const formSchema = z.object({
-  userName: z.string().min(1, "User name is required"),
-  userRole: z.string().optional(),
-  companyName: z.string().min(1, "Company name is required"),
+  userName: z
+    .string()
+    .min(1, "User name is required")
+    .max(MAX_INPUT_CHARS, `Maximum ${MAX_INPUT_CHARS} characters allowed`),
+  userRole: z
+    .string()
+    .max(MAX_INPUT_CHARS, `Maximum ${MAX_INPUT_CHARS} characters allowed`)
+    .optional(),
+  companyName: z
+    .string()
+    .min(1, "Company name is required")
+    .max(MAX_INPUT_CHARS, `Maximum ${MAX_INPUT_CHARS} characters allowed`),
   industryType: z.string().optional(),
   industryStage: z.string().optional(),
   industrySize: z
     .string()
     .regex(/^\d*$/, "Industry size must be an integer")
+    .max(MAX_INPUT_CHARS, `Maximum ${MAX_INPUT_CHARS} characters allowed`)
     .optional()
     .transform((val) => (val === "" ? null : val)),
-  companyDetails: z.string().optional(),
-  companyMission: z.string().optional(),
-  companyVision: z.string().optional(),
-  companyPolicy: z.string().optional(),
-  extraDetails: z.string().optional(),
+  companyDetails: z
+    .string()
+    .max(MAX_TEXTAREA_CHARS, `Maximum ${MAX_TEXTAREA_CHARS} characters allowed`)
+    .optional(),
+  companyMission: z
+    .string()
+    .max(MAX_TEXTAREA_CHARS, `Maximum ${MAX_TEXTAREA_CHARS} characters allowed`)
+    .optional(),
+  companyVision: z
+    .string()
+    .max(MAX_TEXTAREA_CHARS, `Maximum ${MAX_TEXTAREA_CHARS} characters allowed`)
+    .optional(),
+  companyPolicy: z
+    .string()
+    .max(MAX_TEXTAREA_CHARS, `Maximum ${MAX_TEXTAREA_CHARS} characters allowed`)
+    .optional(),
+  extraDetails: z
+    .string()
+    .max(MAX_TEXTAREA_CHARS, `Maximum ${MAX_TEXTAREA_CHARS} characters allowed`)
+    .optional(),
 });
 
 export default function MyAccountDialog({ open, onOpenChange }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState("personal");
+  const [formCompletion, setFormCompletion] = useState(0);
 
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState("");
@@ -61,10 +100,32 @@ export default function MyAccountDialog({ open, onOpenChange }) {
   // Real-time validation errors
   const [errors, setErrors] = useState({});
 
-  // Refs for scrolling to first error
-  const userNameRef = useRef(null);
-  const companyNameRef = useRef(null);
-  const industrySizeRef = useRef(null);
+  // Calculate character counts
+  const characterCounts = {
+    userName: userName.length,
+    userRole: userRole.length,
+    companyName: companyName.length,
+    industrySize: industrySize.length,
+    companyDetails: companyDetails.length,
+    companyMission: companyMission.length,
+    companyVision: companyVision.length,
+    companyPolicy: companyPolicy.length,
+    extraDetails: extraDetails.length,
+  };
+
+  // Calculate form completion percentage
+  useEffect(() => {
+    const requiredFields = { userName, companyName };
+    const requiredFieldsCount = Object.keys(requiredFields).length;
+    const filledRequiredFields = Object.values(requiredFields).filter(
+      (value) => value && value.trim() !== ""
+    ).length;
+
+    const percentComplete = Math.round(
+      (filledRequiredFields / requiredFieldsCount) * 100
+    );
+    setFormCompletion(percentComplete);
+  }, [userName, companyName]);
 
   // Validate as user types using Zod
   useEffect(() => {
@@ -158,29 +219,32 @@ export default function MyAccountDialog({ open, onOpenChange }) {
     }
   }, [open]);
 
-  // Scroll to the first error field
-  function scrollToFirstErrorField(errorField) {
-    switch (errorField) {
-      case "userName":
-        userNameRef.current?.scrollIntoView({ behavior: "smooth" });
-        break;
-      case "companyName":
-        companyNameRef.current?.scrollIntoView({ behavior: "smooth" });
-        break;
-      case "industrySize":
-        industrySizeRef.current?.scrollIntoView({ behavior: "smooth" });
-        break;
-      default:
-        break;
-    }
-  }
-
   // Submit handler
   async function handleSubmit() {
     // Check for validation errors
     const currentErrors = Object.keys(errors);
     if (currentErrors.length > 0) {
-      scrollToFirstErrorField(currentErrors[0]);
+      // Find the tab containing the first error
+      let tabWithError = "personal";
+      if (
+        currentErrors[0] === "industryType" ||
+        currentErrors[0] === "industryStage" ||
+        currentErrors[0] === "industrySize"
+      ) {
+        tabWithError = "company";
+      } else if (
+        [
+          "companyDetails",
+          "companyMission",
+          "companyVision",
+          "companyPolicy",
+          "extraDetails",
+        ].includes(currentErrors[0])
+      ) {
+        tabWithError = "details";
+      }
+
+      setActiveTab(tabWithError);
       return;
     }
 
@@ -208,249 +272,515 @@ export default function MyAccountDialog({ open, onOpenChange }) {
 
       const data = await response.json();
       if (!response.ok) {
-        alert(`Error: ${data.error || "Failed to save account details"}`);
+        toast({
+          title: "Error",
+          description: data.error || "Failed to save account details",
+          variant: "destructive",
+        });
         setIsSubmitting(false);
         return;
       }
 
-      alert("Your account details were saved successfully!");
-      // Do NOT close the dialog; remove or comment out this line:
-      // onOpenChange(false);
+      toast({
+        title: "Success",
+        description: "Your account details were saved successfully!",
+      });
     } catch (error) {
-      alert("An unexpected error occurred. Please try again.");
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  const CharacterCounter = ({ current, max, fieldName }) => {
+    const percentage = Math.min((current / max) * 100, 100);
+    const isNearLimit = percentage > 80;
+    const isAtLimit = percentage >= 100;
+
+    return (
+      <div className="mt-1 flex flex-col space-y-1">
+        <div className="flex justify-between items-center text-xs">
+          <span
+            className={`${
+              isAtLimit
+                ? "text-red-500 font-medium"
+                : isNearLimit
+                ? "text-amber-500"
+                : "text-gray-500"
+            }`}
+          >
+            {current}/{max} characters
+          </span>
+          {errors[fieldName] && (
+            <span className="text-red-500 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              {errors[fieldName]}
+            </span>
+          )}
+        </div>
+        <Progress
+          value={percentage}
+          className="h-1"
+          indicatorClassName={`${
+            isAtLimit
+              ? "bg-red-500"
+              : isNearLimit
+              ? "bg-amber-500"
+              : "bg-blue-600"
+          }`}
+        />
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-md w-full mx-auto bg-white dark:bg-gray-900
-                   rounded-md shadow-lg p-4 sm:p-6
-                   max-h-[80vh] overflow-y-auto
-                   scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent
-                   dark:scrollbar-thumb-gray-600"
-      >
+      <DialogContent className="sm:max-w-2xl w-full mx-auto bg-white dark:bg-gray-900 rounded-xl shadow-xl p-0 overflow-hidden">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col h-full"
         >
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">
-              Manage Account Info
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
-              Update your personal and company information
-            </DialogDescription>
-          </DialogHeader>
+          {/* Header with progress bar */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-2xl font-bold">
+                Manage Account Info
+              </DialogTitle>
+              <DialogDescription className="text-blue-100 opacity-90">
+                Set up your profile and company details
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex items-center gap-2">
+              <Progress value={formCompletion} className="h-2 bg-blue-400/30" />
+              <span className="text-sm font-medium">{formCompletion}%</span>
+            </div>
+          </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span className="ml-2">Loading details...</span>
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-3 text-lg">Loading your profile...</span>
             </div>
           ) : (
-            <>
-              <div className="flex flex-col space-y-6 mt-4 w-full">
-                {/* Personal Information */}
-                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
-                  <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
-                    Personal Information
-                  </h3>
-                  <div className="flex flex-col space-y-4">
-                    <div ref={userNameRef}>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Your Name <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        id="userName"
-                        placeholder="Enter your full name"
-                        className="w-full"
-                        value={userName}
-                        onChange={(e) => setUserName(e.target.value)}
-                      />
-                      {errors.userName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.userName}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        User Role
-                      </label>
-                      <Input
-                        placeholder="Enter your role"
-                        className="w-full"
-                        value={userRole}
-                        onChange={(e) => setUserRole(e.target.value)}
-                      />
-                    </div>
-                    <div ref={companyNameRef}>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Company Name <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        id="companyName"
-                        placeholder="Enter your company name"
-                        className="w-full"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                      />
-                      {errors.companyName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.companyName}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Company & Industry */}
-                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
-                  <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
-                    Company &amp; Industry
-                  </h3>
-                  <div className="flex flex-col space-y-4">
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Industry Type
-                      </label>
-                      <Select
-                        onValueChange={(value) => setIndustryType(value)}
-                        value={industryType}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Choose industry type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="it-services">
-                            IT Services
-                          </SelectItem>
-                          <SelectItem value="industrial">Industrial</SelectItem>
-                          <SelectItem value="marketing">Marketing</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Industry Stage
-                      </label>
-                      <Select
-                        onValueChange={(value) => setIndustryStage(value)}
-                        value={industryStage}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Choose industry stage" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="start-up">Start-up</SelectItem>
-                          <SelectItem value="mid-size">Mid-Size</SelectItem>
-                          <SelectItem value="big-size">Big-Size</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div ref={industrySizeRef}>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        No. of Employees
-                      </label>
-                      <Input
-                        id="industrySize"
-                        placeholder="e.g. 50 employees"
-                        className="w-full"
-                        value={industrySize}
-                        onChange={(e) => setIndustrySize(e.target.value)}
-                      />
-                      {errors.industrySize && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {errors.industrySize}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Details */}
-                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4 w-full">
-                  <h3 className="text-base font-medium mb-4 text-gray-700 dark:text-gray-200">
-                    Additional Details
-                  </h3>
-                  <div className="flex flex-col space-y-4">
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        About Your Company
-                      </label>
-                      <Textarea
-                        placeholder="Briefly describe your company"
-                        className="w-full"
-                        value={companyDetails}
-                        onChange={(e) => setCompanyDetails(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Company Mission
-                      </label>
-                      <Textarea
-                        placeholder="Describe your company's mission"
-                        className="w-full"
-                        value={companyMission}
-                        onChange={(e) => setCompanyMission(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Company Vision
-                      </label>
-                      <Textarea
-                        placeholder="Share the vision statement"
-                        className="w-full"
-                        value={companyVision}
-                        onChange={(e) => setCompanyVision(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Company Policy
-                      </label>
-                      <Textarea
-                        placeholder="Outline any essential policies"
-                        className="w-full"
-                        value={companyPolicy}
-                        onChange={(e) => setCompanyPolicy(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 dark:text-gray-300 mb-1 block">
-                        Extra Details
-                      </label>
-                      <Textarea
-                        placeholder="Add any additional info here"
-                        className="w-full"
-                        value={extraDetails}
-                        onChange={(e) => setExtraDetails(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Button
-                    variant="default"
-                    className="w-full flex items-center justify-center"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
+            <div className="p-6">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-3 mb-6">
+                  <TabsTrigger
+                    value="personal"
+                    className="flex items-center gap-2"
                   >
-                    {isSubmitting && (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    )}
-                    Save Changes
-                  </Button>
+                    <User className="h-4 w-4" />
+                    <span>Personal</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="company"
+                    className="flex items-center gap-2"
+                  >
+                    <Building2 className="h-4 w-4" />
+                    <span>Company</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="details"
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Details</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                <div className="mt-4 overflow-y-auto max-h-[60vh] pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+                  <AnimatePresence mode="wait">
+                    <TabsContent value="personal" className="mt-0" asChild>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 space-y-5">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Your Name <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                              id="userName"
+                              placeholder="Enter your full name"
+                              className="w-full bg-white dark:bg-gray-800"
+                              value={userName}
+                              onChange={(e) =>
+                                setUserName(
+                                  e.target.value.slice(0, MAX_INPUT_CHARS)
+                                )
+                              }
+                              maxLength={MAX_INPUT_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.userName}
+                              max={MAX_INPUT_CHARS}
+                              fieldName="userName"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              User Role
+                            </label>
+                            <Input
+                              placeholder="Enter your role (e.g., Marketing Director)"
+                              className="w-full bg-white dark:bg-gray-800"
+                              value={userRole}
+                              onChange={(e) =>
+                                setUserRole(
+                                  e.target.value.slice(0, MAX_INPUT_CHARS)
+                                )
+                              }
+                              maxLength={MAX_INPUT_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.userRole}
+                              max={MAX_INPUT_CHARS}
+                              fieldName="userRole"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Company Name{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                              id="companyName"
+                              placeholder="Enter your company name"
+                              className="w-full bg-white dark:bg-gray-800"
+                              value={companyName}
+                              onChange={(e) =>
+                                setCompanyName(
+                                  e.target.value.slice(0, MAX_INPUT_CHARS)
+                                )
+                              }
+                              maxLength={MAX_INPUT_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.companyName}
+                              max={MAX_INPUT_CHARS}
+                              fieldName="companyName"
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    </TabsContent>
+
+                    <TabsContent value="company" className="mt-0" asChild>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 space-y-5">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Industry Type
+                            </label>
+                            <Select
+                              onValueChange={(value) => setIndustryType(value)}
+                              value={industryType}
+                            >
+                              <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                                <SelectValue placeholder="Choose industry type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="it-services">
+                                  IT Services
+                                </SelectItem>
+                                <SelectItem value="industrial">
+                                  Industrial
+                                </SelectItem>
+                                <SelectItem value="marketing">
+                                  Marketing
+                                </SelectItem>
+                                <SelectItem value="healthcare">
+                                  Healthcare
+                                </SelectItem>
+                                <SelectItem value="education">
+                                  Education
+                                </SelectItem>
+                                <SelectItem value="finance">Finance</SelectItem>
+                                <SelectItem value="retail">Retail</SelectItem>
+                                <SelectItem value="manufacturing">
+                                  Manufacturing
+                                </SelectItem>
+                                <SelectItem value="consulting">
+                                  Consulting
+                                </SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errors.industryType && (
+                              <p className="text-red-500 text-xs mt-1 flex items-center">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                {errors.industryType}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Industry Stage
+                            </label>
+                            <Select
+                              onValueChange={(value) => setIndustryStage(value)}
+                              value={industryStage}
+                            >
+                              <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                                <SelectValue placeholder="Choose industry stage" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="start-up">
+                                  Start-up
+                                </SelectItem>
+                                <SelectItem value="early-growth">
+                                  Early Growth
+                                </SelectItem>
+                                <SelectItem value="mid-size">
+                                  Mid-Size
+                                </SelectItem>
+                                <SelectItem value="established">
+                                  Established
+                                </SelectItem>
+                                <SelectItem value="enterprise">
+                                  Enterprise
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errors.industryStage && (
+                              <p className="text-red-500 text-xs mt-1 flex items-center">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                {errors.industryStage}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Number of Employees
+                            </label>
+                            <Input
+                              id="industrySize"
+                              placeholder="e.g. 50"
+                              className="w-full bg-white dark:bg-gray-800"
+                              value={industrySize}
+                              onChange={(e) =>
+                                setIndustrySize(
+                                  e.target.value.slice(0, MAX_INPUT_CHARS)
+                                )
+                              }
+                              maxLength={MAX_INPUT_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.industrySize}
+                              max={MAX_INPUT_CHARS}
+                              fieldName="industrySize"
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    </TabsContent>
+
+                    <TabsContent value="details" className="mt-0" asChild>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 space-y-5">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              About Your Company
+                            </label>
+                            <Textarea
+                              placeholder="Briefly describe your company"
+                              className="w-full min-h-24 bg-white dark:bg-gray-800"
+                              value={companyDetails}
+                              onChange={(e) =>
+                                setCompanyDetails(
+                                  e.target.value.slice(0, MAX_TEXTAREA_CHARS)
+                                )
+                              }
+                              maxLength={MAX_TEXTAREA_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.companyDetails}
+                              max={MAX_TEXTAREA_CHARS}
+                              fieldName="companyDetails"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Company Mission
+                            </label>
+                            <Textarea
+                              placeholder="Describe your company's mission"
+                              className="w-full min-h-24 bg-white dark:bg-gray-800"
+                              value={companyMission}
+                              onChange={(e) =>
+                                setCompanyMission(
+                                  e.target.value.slice(0, MAX_TEXTAREA_CHARS)
+                                )
+                              }
+                              maxLength={MAX_TEXTAREA_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.companyMission}
+                              max={MAX_TEXTAREA_CHARS}
+                              fieldName="companyMission"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Company Vision
+                            </label>
+                            <Textarea
+                              placeholder="Share the vision statement"
+                              className="w-full min-h-24 bg-white dark:bg-gray-800"
+                              value={companyVision}
+                              onChange={(e) =>
+                                setCompanyVision(
+                                  e.target.value.slice(0, MAX_TEXTAREA_CHARS)
+                                )
+                              }
+                              maxLength={MAX_TEXTAREA_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.companyVision}
+                              max={MAX_TEXTAREA_CHARS}
+                              fieldName="companyVision"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Company Policy
+                            </label>
+                            <Textarea
+                              placeholder="Outline any essential policies"
+                              className="w-full min-h-24 bg-white dark:bg-gray-800"
+                              value={companyPolicy}
+                              onChange={(e) =>
+                                setCompanyPolicy(
+                                  e.target.value.slice(0, MAX_TEXTAREA_CHARS)
+                                )
+                              }
+                              maxLength={MAX_TEXTAREA_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.companyPolicy}
+                              max={MAX_TEXTAREA_CHARS}
+                              fieldName="companyPolicy"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                              Extra Details
+                            </label>
+                            <Textarea
+                              placeholder="Add any additional info here"
+                              className="w-full min-h-24 bg-white dark:bg-gray-800"
+                              value={extraDetails}
+                              onChange={(e) =>
+                                setExtraDetails(
+                                  e.target.value.slice(0, MAX_TEXTAREA_CHARS)
+                                )
+                              }
+                              maxLength={MAX_TEXTAREA_CHARS}
+                            />
+                            <CharacterCounter
+                              current={characterCounts.extraDetails}
+                              max={MAX_TEXTAREA_CHARS}
+                              fieldName="extraDetails"
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    </TabsContent>
+                  </AnimatePresence>
+                </div>
+              </Tabs>
+
+              <div className="mt-6 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </Button>
+
+                <div className="flex items-center gap-3">
+                  {activeTab !== "personal" && (
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        setActiveTab((prev) => {
+                          if (prev === "details") return "company";
+                          if (prev === "company") return "personal";
+                          return prev;
+                        })
+                      }
+                      className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                    >
+                      Previous
+                    </Button>
+                  )}
+
+                  {activeTab !== "details" ? (
+                    <Button
+                      variant="default"
+                      onClick={() =>
+                        setActiveTab((prev) => {
+                          if (prev === "personal") return "company";
+                          if (prev === "company") return "details";
+                          return prev;
+                        })
+                      }
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Next
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting || Object.keys(errors).length > 0}
+                      className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 min-w-32"
+                    >
+                      {isSubmitting && (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      )}
+                      Save Changes
+                    </Button>
+                  )}
                 </div>
               </div>
-            </>
+            </div>
           )}
         </motion.div>
       </DialogContent>

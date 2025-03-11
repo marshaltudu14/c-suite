@@ -244,7 +244,7 @@ export default function DashboardPage() {
                 <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 dark:text-white mb-6 leading-tight">
                   Your AI{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">
-                    Executive Team
+                    Workforce
                   </span>{" "}
                   is Ready
                 </h2>
