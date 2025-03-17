@@ -41,7 +41,8 @@ export default function ChatTopBar({ selectedPerson, onClearHistory }) {
   // Dialog states
   const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [isClearHistoryDialogOpen, setIsClearHistoryDialogOpen] = useState(false);
+  const [isClearHistoryDialogOpen, setIsClearHistoryDialogOpen] =
+    useState(false);
 
   const handleClearHistory = () => {
     if (onClearHistory) {
@@ -115,8 +116,10 @@ export default function ChatTopBar({ selectedPerson, onClearHistory }) {
               <DropdownMenuItem onClick={() => setIsAccountDialogOpen(true)}>
                 My Account
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsClearHistoryDialogOpen(true)}>
-                <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setIsClearHistoryDialogOpen(true)}
+              >
                 Clear Chat History
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -141,17 +144,24 @@ export default function ChatTopBar({ selectedPerson, onClearHistory }) {
       />
 
       {/* Clear History Confirmation Dialog */}
-      <AlertDialog open={isClearHistoryDialogOpen} onOpenChange={setIsClearHistoryDialogOpen}>
+      <AlertDialog
+        open={isClearHistoryDialogOpen}
+        onOpenChange={setIsClearHistoryDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all chat history with this assistant. This action cannot be undone.
+              This will permanently delete all chat history with this assistant.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearHistory} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogAction
+              onClick={handleClearHistory}
+              className="bg-red-500 hover:bg-red-600"
+            >
               Clear History
             </AlertDialogAction>
           </AlertDialogFooter>
