@@ -47,7 +47,11 @@ export async function POST(req) {
       model: ollama("gemma3:latest"),
       system: fullSystemPrompt,
       messages: messages,
+      onText: (text) => {
+        console.log("Streaming chunk:", text);
+      },
       onCompletion: async (completion) => {
+        console.log("Chat complete:", completion);
         // Save the complete assistant response to Supabase after streaming is done
         if (userId) {
           await supabase.from("chat_history").insert({
@@ -55,7 +59,6 @@ export async function POST(req) {
             message: completion,
             role: "assistant",
             agent: selectedPerson?.position || "default",
-            created_at: new Date().toISOString(),
           });
         }
       },
