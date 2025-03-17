@@ -85,6 +85,7 @@ export function useChatHistory(user, setMessages) {
       // Improved API call with better error handling
       let response;
       try {
+        // Fetch the latest messages first (newest messages)
         response = await fetch(
           `/api/chat-history?agent=${agentId}&limit=${pageSize}&order=desc`
         );
@@ -112,6 +113,9 @@ export function useChatHistory(user, setMessages) {
         // Set the oldest message ID for pagination
         if (sortedData.length > 0) {
           oldestMessageIdRef.current = sortedData[0].id;
+          console.log(
+            `Set oldest message ID for pagination: ${sortedData[0].id}`
+          );
         }
 
         // Check if we have more messages
@@ -151,6 +155,10 @@ export function useChatHistory(user, setMessages) {
 
   const fetchOlderMessages = async (agentId) => {
     if (!user || !hasMoreMessages || loadingOlderMessages) return;
+    if (!oldestMessageIdRef.current) {
+      console.warn("No oldest message ID available for pagination");
+      return;
+    }
 
     setLoadingOlderMessages(true);
     try {
@@ -159,8 +167,13 @@ export function useChatHistory(user, setMessages) {
       // Improved API call with better error handling
       let response;
       try {
+        console.log(
+          `Fetching older messages before ID: ${oldestMessageIdRef.current}`
+        );
+
+        // Fetch messages older than the oldest message we currently have
         response = await fetch(
-          `/api/chat-history?agent=${agentId}&limit=${pageSize}&page=${nextPage}&before=${oldestMessageIdRef.current}`
+          `/api/chat-history?agent=${agentId}&limit=${pageSize}&before=${oldestMessageIdRef.current}`
         );
 
         if (!response.ok) {
@@ -176,7 +189,7 @@ export function useChatHistory(user, setMessages) {
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        // Sort by created_at to ensure correct order
+        // Sort by created_at to ensure correct order (oldest first)
         const sortedNewData = [...data.data].sort(
           (a, b) => new Date(a.created_at) - new Date(b.created_at)
         );
@@ -184,9 +197,10 @@ export function useChatHistory(user, setMessages) {
         // Update the oldest message ID for next pagination
         if (sortedNewData.length > 0) {
           oldestMessageIdRef.current = sortedNewData[0].id;
+          console.log(`Updated oldest message ID to: ${sortedNewData[0].id}`);
         }
 
-        // Combine with existing history
+        // Combine with existing history (older messages first, then current history)
         const updatedHistory = [...sortedNewData, ...chatHistory];
         setChatHistory(updatedHistory);
 
@@ -278,11 +292,16 @@ export function useChatHistory(user, setMessages) {
     }
   };
 
-  // Check if we need to load more messages when scrolling to top
+  // Check if we need to load more messages when oldest message is in view
   const checkAndLoadMoreMessages = useCallback(
-    (scrollTop, agentId) => {
-      // If we're near the top of the scroll container and have more messages
-      if (scrollTop < 100 && hasMoreMessages && !loadingOlderMessages) {
+    (scrollTop, agentId, isOldestMessageInView = false) => {
+      // If the oldest message is in view and we have more messages to load
+      if (isOldestMessageInView && hasMoreMessages && !loadingOlderMessages) {
+        console.log("Oldest message is in view, loading more messages...");
+        fetchOlderMessages(agentId);
+      }
+      // Also keep the original scroll-based loading as a fallback
+      else if (scrollTop < 100 && hasMoreMessages && !loadingOlderMessages) {
         console.log("Near top of scroll container, loading more messages...");
         fetchOlderMessages(agentId);
       }
