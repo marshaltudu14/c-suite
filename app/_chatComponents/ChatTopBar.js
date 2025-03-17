@@ -31,10 +31,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-/**
- * A top bar (header) with a back button, theme switcher,
- * "My Account" dialog, and a "Settings" dialog containing a Logout button.
- */
 export default function ChatTopBar({ selectedPerson, onClearHistory }) {
   const router = useRouter();
 

@@ -69,7 +69,6 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  console.log("POST is working.");
   const supabase = await createClient();
 
   try {

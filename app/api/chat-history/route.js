@@ -4,40 +4,71 @@ import { NextResponse } from "next/server";
 
 export async function GET(req) {
   try {
-    // Initialize Supabase client
     const supabase = await createClient();
 
-    // Get the current user
+    console.log("Supabase client initialized for user fetch");
+
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
+    console.log("Authenticated user ID:", user?.id);
+
     if (userError || !user) {
+      console.log("Authentication failed with error:", userError?.message);
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    // Get query parameters
     const url = new URL(req.url);
-    const agent = url.searchParams.get("agent") || null;
+    const agent = url.searchParams.get("agent")
+      ? url.searchParams.get("agent").toUpperCase()
+      : null;
+    const limit = parseInt(url.searchParams.get("limit") || "10", 10);
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const order = url.searchParams.get("order") || "asc";
+    const beforeId = url.searchParams.get("before") || null;
 
-    // Build query
+    console.log("Query params:", { agent, limit, page, order, beforeId });
+
+    const offset = (page - 1) * limit;
+
     let query = supabase
       .from("chat_history")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: order === "asc" });
 
-    // Filter by agent if provided
     if (agent) {
       query = query.eq("agent", agent);
     }
 
-    // Execute query
+    if (beforeId) {
+      const { data: refMessage } = await supabase
+        .from("chat_history")
+        .select("created_at")
+        .eq("id", beforeId)
+        .single();
+
+      console.log("Agent Specific Message:", refMessage);
+
+      if (refMessage) {
+        query = query.lt("created_at", refMessage.created_at);
+      }
+    }
+
+    query = query.limit(limit);
+
+    if (page > 1 && !beforeId) {
+      query = query.range(offset, offset + limit - 1);
+    }
+
     const { data, error } = await query;
+
+    console.log("Messages:", data);
 
     if (error) {
       console.error("Error fetching chat history:", error);
@@ -59,35 +90,38 @@ export async function GET(req) {
 
 export async function DELETE(req) {
   try {
-    // Initialize Supabase client
     const supabase = await createClient();
 
-    // Get the current user
+    console.log("Supabase client initialized for DELETE");
+
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
+    console.log("DELETE request for user:", user?.id);
+
     if (userError || !user) {
+      console.log("DELETE auth failed:", userError?.message);
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    // Get query parameters
     const url = new URL(req.url);
-    const agent = url.searchParams.get("agent") || null;
+    const agent = url.searchParams.get("agent")
+      ? url.searchParams.get("agent").toUpperCase()
+      : null;
 
-    // Build query
+    console.log("DELETE params:", { agent });
+
     let query = supabase.from("chat_history").delete().eq("user_id", user.id);
 
-    // Filter by agent if provided
     if (agent) {
       query = query.eq("agent", agent);
     }
 
-    // Execute query
     const { error } = await query;
 
     if (error) {
@@ -98,6 +132,7 @@ export async function DELETE(req) {
       );
     }
 
+    console.log("Chat history deleted successfully");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in /api/chat-history DELETE:", error);
