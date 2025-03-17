@@ -56,6 +56,10 @@ export default function ChatInterfacePage({ systemPrompt }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Chat history state
+  const [chatHistory, setChatHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   // Identify if it's /office/executive/<id> or /office/employee/<id>
   const pathParts = pathname.split("/");
   const category = pathParts[2]; // "executive" or "employee"
@@ -63,6 +67,15 @@ export default function ChatInterfacePage({ systemPrompt }) {
   const isExecutive = category === "executive";
   const dataList = isExecutive ? executivesData : employeesData;
   const selectedPerson = dataList.find((item) => item.id === personId) || null;
+
+  // Convert chat history to the format expected by useChat
+  const convertHistoryToMessages = (history) => {
+    return history.map(item => ({
+      id: item.id,
+      role: item.role === "assistant" ? "assistant" : "user",
+      content: item.message
+    }));
+  };
 
   // Vercel AI chat hook
   const {
@@ -72,6 +85,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
     handleSubmit,
     isLoading,
     setInput,
+    setMessages,
   } = useChat({
     endpoint: "/api/chat",
     body: {
@@ -80,6 +94,7 @@ export default function ChatInterfacePage({ systemPrompt }) {
       selectedPerson,
       modelType, // Pass the selected model to the API
       attachments, // Pass any attachments
+      userId: null, // Will be set in the API
     },
     initialMessages: [],
   });
@@ -263,6 +278,66 @@ export default function ChatInterfacePage({ systemPrompt }) {
   };
 
   // ----------------------------------------------------------------
+  // Fetch chat history for the current agent
+  // ----------------------------------------------------------------
+  const fetchChatHistory = async (agentId) => {
+    if (!user) return;
+    
+    setLoadingHistory(true);
+    try {
+      const response = await fetch(`/api/chat-history?agent=${agentId}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setChatHistory(data.data);
+        
+        // Convert history to messages format and set in the chat
+        const historyMessages = convertHistoryToMessages(data.data);
+        setMessages(historyMessages);
+      }
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat history",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // ----------------------------------------------------------------
+  // Clear chat history for the current agent
+  // ----------------------------------------------------------------
+  const clearChatHistory = async () => {
+    if (!user || !selectedPerson) return;
+    
+    try {
+      const response = await fetch(`/api/chat-history?agent=${selectedPerson.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setChatHistory([]);
+        setMessages([]);
+        toast({
+          title: "Success",
+          description: "Chat history cleared",
+        });
+      }
+    } catch (error) {
+      console.error("Error clearing chat history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear chat history",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ----------------------------------------------------------------
   // Unified user check in a single useEffect block
   // ----------------------------------------------------------------
   useEffect(() => {
@@ -317,19 +392,50 @@ export default function ChatInterfacePage({ systemPrompt }) {
     getCompanyDetails();
   }, []);
 
+  // Fetch chat history when user and selectedPerson are available
+  useEffect(() => {
+    if (user && selectedPerson) {
+      fetchChatHistory(selectedPerson.id);
+    }
+  }, [user, selectedPerson]);
+
   // (Optional) fetch last chat previews after we have a user
   useEffect(() => {
     if (!user) return;
     const fetchLastChats = async () => {
       try {
+        // Fetch chat previews for executives
         const newExecutiveChats = {};
-        executivesData.forEach((exec) => {
-          newExecutiveChats[exec.id] = `Last chat with ${exec.name}`;
-        });
+        for (const exec of executivesData) {
+          try {
+            const response = await fetch(`/api/chat-history?agent=${exec.id}&limit=1`);
+            const data = await response.json();
+            if (data.success && data.data && data.data.length > 0) {
+              newExecutiveChats[exec.id] = data.data[0].message.substring(0, 30) + "...";
+            } else {
+              newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
+            }
+          } catch (error) {
+            newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
+          }
+        }
+        
+        // Fetch chat previews for employees
         const newEmployeeChats = {};
-        employeesData.forEach((emp) => {
-          newEmployeeChats[emp.id] = `Last chat with ${emp.name}`;
-        });
+        for (const emp of employeesData) {
+          try {
+            const response = await fetch(`/api/chat-history?agent=${emp.id}&limit=1`);
+            const data = await response.json();
+            if (data.success && data.data && data.data.length > 0) {
+              newEmployeeChats[emp.id] = data.data[0].message.substring(0, 30) + "...";
+            } else {
+              newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
+            }
+          } catch (error) {
+            newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
+          }
+        }
+        
         setExecutivesChats(newExecutiveChats);
         setEmployeesChats(newEmployeeChats);
       } catch (error) {
@@ -406,7 +512,10 @@ export default function ChatInterfacePage({ systemPrompt }) {
       {/* Right side (chat) => full width on mobile, 70% on desktop */}
       <div className="relative flex flex-col w-full md:w-2/3">
         {/* Top bar */}
-        <ChatTopBar selectedPerson={selectedPerson} />
+        <ChatTopBar 
+          selectedPerson={selectedPerson} 
+          onClearHistory={clearChatHistory}
+        />
 
         {/* Chat area */}
         <div
@@ -414,17 +523,25 @@ export default function ChatInterfacePage({ systemPrompt }) {
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2 bg-gray-50 dark:bg-gray-900"
         >
-          {displayedMessages.map((msg, idx) => (
-            <MessageBubble
-              key={idx}
-              message={{
-                role: msg.role === "assistant" ? "agent" : "user",
-                content: msg.content,
-              }}
-            />
-          ))}
-          {isLoading && (
-            <MessageBubble message={{ role: "agent", content: "..." }} />
+          {loadingHistory ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <>
+              {displayedMessages.map((msg, idx) => (
+                <MessageBubble
+                  key={idx}
+                  message={{
+                    role: msg.role === "assistant" ? "agent" : "user",
+                    content: msg.content,
+                  }}
+                />
+              ))}
+              {isLoading && (
+                <MessageBubble message={{ role: "agent", content: "..." }} />
+              )}
+            </>
           )}
         </div>
 

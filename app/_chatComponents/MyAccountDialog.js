@@ -347,12 +347,12 @@ export default function MyAccountDialog({ open, onOpenChange }) {
           className="flex flex-col h-full"
         >
           {/* Header with progress bar */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+          <div className="p-6">
             <DialogHeader className="mb-4">
               <DialogTitle className="text-2xl font-bold">
                 Manage Account Info
               </DialogTitle>
-              <DialogDescription className="text-blue-100 opacity-90">
+              <DialogDescription className="text-gray-500 opacity-90">
                 Set up your profile and company details
               </DialogDescription>
             </DialogHeader>
@@ -365,7 +365,7 @@ export default function MyAccountDialog({ open, onOpenChange }) {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2 className="w-8 h-8 animate-spin" />
               <span className="ml-3 text-lg">Loading your profile...</span>
             </div>
           ) : (
@@ -737,7 +737,7 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                 <div className="flex items-center gap-3">
                   {activeTab !== "personal" && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       onClick={() =>
                         setActiveTab((prev) => {
                           if (prev === "details") return "company";
@@ -745,7 +745,6 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                           return prev;
                         })
                       }
-                      className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
                     >
                       Previous
                     </Button>
@@ -761,7 +760,6 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                           return prev;
                         })
                       }
-                      className="bg-blue-600 hover:bg-blue-700"
                     >
                       Next
                     </Button>
@@ -770,7 +768,7 @@ export default function MyAccountDialog({ open, onOpenChange }) {
                       variant="default"
                       onClick={handleSubmit}
                       disabled={isSubmitting || Object.keys(errors).length > 0}
-                      className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 min-w-32"
+                      className="flex items-center gap-2 min-w-32"
                     >
                       {isSubmitting && (
                         <Loader2 className="w-4 h-4 animate-spin" />
