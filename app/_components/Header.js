@@ -165,7 +165,7 @@ export default function Header() {
                     className="hidden sm:block"
                   >
                     <Link href="/register">
-                      <Button variant="ghost" className="font-medium">
+                      <Button variant="outline" className="font-medium">
                         Sign Up
                       </Button>
                     </Link>

@@ -16,8 +16,9 @@ export function useChatHistory(user, setMessages) {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 10; // Number of messages to fetch per page
-  const maxTokens = 100000; // Maximum tokens to include in context
+  const maxTokens = 50000; // Maximum tokens to include in context (reduced to 50k as requested)
   const oldestMessageIdRef = useRef(null);
+  const systemPromptTokensRef = useRef(0); // To track system prompt tokens
 
   // Convert chat history to the format expected by useChat
   const convertHistoryToMessages = (history) => {
@@ -28,10 +29,22 @@ export function useChatHistory(user, setMessages) {
     }));
   };
 
-  // Limit messages to stay under token limit
-  const limitMessagesToTokenCount = (messages) => {
+  // Limit messages to stay under token limit, preserving system prompts
+  const limitMessagesToTokenCount = (messages, systemPrompt = "") => {
     let totalTokens = 0;
     const limitedMessages = [];
+
+    // First, estimate system prompt tokens (these should never be truncated)
+    const systemPromptTokens = estimateTokenCount(systemPrompt);
+    systemPromptTokensRef.current = systemPromptTokens;
+
+    // Available tokens for conversation messages
+    const availableTokens = maxTokens - systemPromptTokens;
+
+    if (availableTokens <= 0) {
+      console.warn("System prompt exceeds token limit, may cause issues");
+      // Still try to include at least some messages
+    }
 
     // Process messages from newest to oldest (reverse order)
     // This ensures we keep the most recent messages
@@ -39,14 +52,24 @@ export function useChatHistory(user, setMessages) {
       const msg = messages[i];
       const tokenCount = estimateTokenCount(msg.content);
 
-      if (totalTokens + tokenCount <= maxTokens) {
+      if (totalTokens + tokenCount <= availableTokens) {
         limitedMessages.unshift(msg); // Add to beginning to maintain order
         totalTokens += tokenCount;
       } else {
+        console.log(
+          `Truncated ${
+            messages.length - limitedMessages.length
+          } older messages to stay within token limit`
+        );
         break; // Stop once we hit the token limit
       }
     }
 
+    console.log(
+      `Using approximately ${
+        totalTokens + systemPromptTokens
+      } tokens (${totalTokens} for messages, ${systemPromptTokens} for system prompt)`
+    );
     return limitedMessages;
   };
 
@@ -59,9 +82,23 @@ export function useChatHistory(user, setMessages) {
     setHasMoreMessages(true);
 
     try {
-      const response = await fetch(
-        `/api/chat-history?agent=${agentId}&limit=${pageSize}&order=desc`
-      );
+      // Improved API call with better error handling
+      let response;
+      try {
+        response = await fetch(
+          `/api/chat-history?agent=${agentId}&limit=${pageSize}&order=desc`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+      } catch (fetchError) {
+        console.error("Network error fetching chat history:", fetchError);
+        toast.error("Network error loading chat history. Please try again.");
+        setLoadingHistory(false);
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -80,11 +117,24 @@ export function useChatHistory(user, setMessages) {
         // Check if we have more messages
         setHasMoreMessages(data.data.length >= pageSize);
 
-        // Convert history to messages format and set in the chat
+        // Convert history to messages format
         const historyMessages = convertHistoryToMessages(sortedData);
 
-        // Apply token limiting
-        const limitedMessages = limitMessagesToTokenCount(historyMessages);
+        // Get the current system prompt from the chat interface (if available)
+        // For now we'll use an empty string as we don't have direct access to it
+        const currentSystemPrompt = "";
+
+        // Apply token limiting with system prompt consideration
+        const limitedMessages = limitMessagesToTokenCount(
+          historyMessages,
+          currentSystemPrompt
+        );
+
+        // Log information about the loaded messages
+        console.log(
+          `Loaded ${sortedData.length} messages, using ${limitedMessages.length} after token limiting`
+        );
+
         setMessages(limitedMessages);
       } else {
         setChatHistory([]);
@@ -92,8 +142,8 @@ export function useChatHistory(user, setMessages) {
         setHasMoreMessages(false);
       }
     } catch (error) {
-      console.error("Error fetching chat history:", error);
-      toast.error("Failed to load chat history");
+      console.error("Error processing chat history:", error);
+      toast.error("Failed to process chat history");
     } finally {
       setLoadingHistory(false);
     }
@@ -105,9 +155,24 @@ export function useChatHistory(user, setMessages) {
     setLoadingOlderMessages(true);
     try {
       const nextPage = page + 1;
-      const response = await fetch(
-        `/api/chat-history?agent=${agentId}&limit=${pageSize}&page=${nextPage}&before=${oldestMessageIdRef.current}`
-      );
+
+      // Improved API call with better error handling
+      let response;
+      try {
+        response = await fetch(
+          `/api/chat-history?agent=${agentId}&limit=${pageSize}&page=${nextPage}&before=${oldestMessageIdRef.current}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+      } catch (fetchError) {
+        console.error("Network error fetching older messages:", fetchError);
+        toast.error("Network error loading older messages. Please try again.");
+        setLoadingOlderMessages(false);
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {
@@ -128,19 +193,31 @@ export function useChatHistory(user, setMessages) {
         // Convert combined history to messages format
         const historyMessages = convertHistoryToMessages(updatedHistory);
 
-        // Apply token limiting
-        const limitedMessages = limitMessagesToTokenCount(historyMessages);
+        // Get the current system prompt from the chat interface (if available)
+        // For now we'll use an empty string as we don't have direct access to it
+        const currentSystemPrompt = "";
+
+        // Apply token limiting with system prompt consideration
+        const limitedMessages = limitMessagesToTokenCount(
+          historyMessages,
+          currentSystemPrompt
+        );
         setMessages(limitedMessages);
 
         // Update pagination state
         setPage(nextPage);
         setHasMoreMessages(data.data.length >= pageSize);
+
+        console.log(
+          `Loaded ${data.data.length} older messages, now have ${updatedHistory.length} total messages`
+        );
       } else {
         setHasMoreMessages(false);
+        console.log("No more older messages available");
       }
     } catch (error) {
-      console.error("Error fetching older messages:", error);
-      toast.error("Failed to load older messages");
+      console.error("Error processing older messages:", error);
+      toast.error("Failed to process older messages");
     } finally {
       setLoadingOlderMessages(false);
     }
@@ -176,42 +253,19 @@ export function useChatHistory(user, setMessages) {
     if (!user) return { executivesChats: {}, employeesChats: {} };
 
     try {
-      // Fetch chat previews for executives
+      // Instead of fetching last messages for each agent, just use default text
+      // This optimizes the chat interface by reducing API calls
+
+      // Create default chat previews for executives
       const newExecutiveChats = {};
       for (const exec of executivesData) {
-        try {
-          const response = await fetch(
-            `/api/chat-history?agent=${exec.id}&limit=1&order=desc`
-          );
-          const data = await response.json();
-          if (data.success && data.data && data.data.length > 0) {
-            // Use the full message for preview
-            newExecutiveChats[exec.id] = data.data[0].message;
-          } else {
-            newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
-          }
-        } catch (error) {
-          newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
-        }
+        newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
       }
 
-      // Fetch chat previews for employees
+      // Create default chat previews for employees
       const newEmployeeChats = {};
       for (const emp of employeesData) {
-        try {
-          const response = await fetch(
-            `/api/chat-history?agent=${emp.id}&limit=1&order=desc`
-          );
-          const data = await response.json();
-          if (data.success && data.data && data.data.length > 0) {
-            // Use the full message for preview
-            newEmployeeChats[emp.id] = data.data[0].message;
-          } else {
-            newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
-          }
-        } catch (error) {
-          newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
-        }
+        newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
       }
 
       return {
@@ -219,7 +273,7 @@ export function useChatHistory(user, setMessages) {
         employeesChats: newEmployeeChats,
       };
     } catch (error) {
-      console.error("Error fetching chats:", error);
+      console.error("Error setting up chat previews:", error);
       return { executivesChats: {}, employeesChats: {} };
     }
   };
@@ -228,11 +282,12 @@ export function useChatHistory(user, setMessages) {
   const checkAndLoadMoreMessages = useCallback(
     (scrollTop, agentId) => {
       // If we're near the top of the scroll container and have more messages
-      if (scrollTop < 50 && hasMoreMessages && !loadingOlderMessages) {
+      if (scrollTop < 100 && hasMoreMessages && !loadingOlderMessages) {
+        console.log("Near top of scroll container, loading more messages...");
         fetchOlderMessages(agentId);
       }
     },
-    [hasMoreMessages, loadingOlderMessages]
+    [hasMoreMessages, loadingOlderMessages, fetchOlderMessages]
   );
 
   return {

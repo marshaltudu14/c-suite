@@ -24,7 +24,11 @@ export function useScrollHandling(
     }
 
     // Check if we need to load older messages when near the top
-    if (selectedPerson && checkAndLoadMoreMessages) {
+    // Only trigger if we're very close to the top (scrollTop < 100px)
+    if (selectedPerson && checkAndLoadMoreMessages && scrollTop < 100) {
+      console.log(
+        `Scroll position: ${scrollTop}px from top, checking for more messages...`
+      );
       checkAndLoadMoreMessages(scrollTop, selectedPerson.id);
     }
   };

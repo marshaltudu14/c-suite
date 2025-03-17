@@ -43,26 +43,44 @@ export async function POST(req) {
     }
 
     // Call Ollama with your chosen model
+    let fullCompletion = "";
+
     const result = await streamText({
       model: ollama("gemma3:latest"),
       system: fullSystemPrompt,
       messages: messages,
       onText: (text) => {
         console.log("Streaming chunk:", text);
+        // Accumulate the text chunks to build the complete response
+        fullCompletion += text;
       },
       onCompletion: async (completion) => {
         console.log("Chat complete:", completion);
-        // Save the complete assistant response to Supabase after streaming is done
-        if (userId) {
-          await supabase.from("chat_history").insert({
-            user_id: userId,
-            message: completion,
-            role: "assistant",
-            agent: selectedPerson?.position || "default",
-          });
-        }
       },
     });
+
+    // Save the complete assistant response to Supabase after streaming is done
+    // This is outside the onCompletion callback to ensure it runs properly
+    try {
+      if (userId) {
+        const timestamp = new Date().toISOString();
+        const { error } = await supabase.from("chat_history").insert({
+          user_id: userId,
+          message: fullCompletion,
+          role: "assistant",
+          agent: selectedPerson?.position || "default",
+          created_at: timestamp,
+        });
+
+        if (error) {
+          console.error("Error saving assistant message to Supabase:", error);
+        } else {
+          console.log("Successfully saved assistant message to Supabase");
+        }
+      }
+    } catch (saveError) {
+      console.error("Exception when saving to Supabase:", saveError);
+    }
 
     // Return the streamed response directly
     return result.toDataStreamResponse();
