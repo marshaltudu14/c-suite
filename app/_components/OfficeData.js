@@ -52,7 +52,7 @@ export const executivesData = [
   },
   {
     id: "cto",
-    name: "Marshal Tudu",
+    name: "Marshal",
     position: "CTO",
     image: "/CTO.webp",
     link: "/office/executive/cto",
