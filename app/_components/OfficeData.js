@@ -1,7 +1,5 @@
 "use client";
 
-// This file simply exports data. You can import this from any page or component.
-
 export const demoExecutiveMessages = {
   ceo: "I've analyzed the market trends and prepared a strategic growth plan for next quarter. Let me know your thoughts on the updated proposal!",
   cfo: "The latest financial forecasts indicate a solid revenue increase, but we must allocate more resources to R&D. Thoughts?",
@@ -28,35 +26,35 @@ export const demoEmployeeMessages = {
 export const executivesData = [
   {
     id: "ceo",
-    name: "Satya",
+    name: "Satya Kiran Sahoo",
     position: "CEO",
     image: "/CEO.webp",
     link: "/office/executive/ceo",
   },
   {
     id: "cfo",
-    name: "Deepak",
+    name: "Deepak Sethi",
     position: "CFO",
     image: "/CFO.webp",
     link: "/office/executive/cfo",
   },
   {
     id: "cmo",
-    name: "Zunaid",
+    name: "Zunaid Ahaal",
     position: "CMO",
     image: "/CMO.webp",
     link: "/office/executive/cmo",
   },
   {
     id: "coo",
-    name: "Gaurav",
+    name: "Gaurav Singh",
     position: "COO",
     image: "/COO.webp",
     link: "/office/executive/coo",
   },
   {
     id: "cto",
-    name: "Marshal",
+    name: "Marshal Tudu",
     position: "CTO",
     image: "/CTO.webp",
     link: "/office/executive/cto",
