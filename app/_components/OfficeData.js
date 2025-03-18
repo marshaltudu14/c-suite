@@ -1,5 +1,3 @@
-"use client";
-
 export const demoExecutiveMessages = {
   ceo: "I've analyzed the market trends and prepared a strategic growth plan for next quarter. Let me know your thoughts on the updated proposal!",
   cfo: "The latest financial forecasts indicate a solid revenue increase, but we must allocate more resources to R&D. Thoughts?",

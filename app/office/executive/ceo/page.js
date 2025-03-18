@@ -1,4 +1,5 @@
 import ChatInterface from "@/app/_components/ChatInterface";
+import { executivesData } from "@/app/_components/OfficeData";
 import React from "react";
 
 const CeoPage = () => {
