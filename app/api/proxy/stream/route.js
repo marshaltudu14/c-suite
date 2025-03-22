@@ -32,7 +32,7 @@ export async function GET(request) {
     );
 
     req.on("error", (err) => {
-      console.error(err);
+      console.error("Proxy error:", err);
       resolve(new Response("Internal Server Error", { status: 500 }));
     });
 
