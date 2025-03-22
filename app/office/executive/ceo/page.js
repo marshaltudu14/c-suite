@@ -4,19 +4,19 @@ import React from "react";
 
 const CeoPage = () => {
   const ceoData = executivesData.find((executive) => executive.id === "ceo");
-  const ceoName = ceoData ? ceoData.name : "Satya Sahoo";
+  const ceoName = ceoData ? ceoData.name : "Marshal";
 
   const ctoData = executivesData.find((executive) => executive.id === "cto");
-  const ctoName = ctoData ? ctoData.name : "Marshal Tudu";
+  const ctoName = ctoData ? ctoData.name : "Khushi";
 
   const cmoData = executivesData.find((executive) => executive.id === "cmo");
-  const cmoName = cmoData ? cmoData.name : "Zunaid Ahaal";
+  const cmoName = cmoData ? cmoData.name : "Zunaid";
 
   const cfoData = executivesData.find((executive) => executive.id === "cfo");
-  const cfoName = cfoData ? cfoData.name : "Deepak Sethi";
+  const cfoName = cfoData ? cfoData.name : "Deepak";
 
   const cooData = executivesData.find((executive) => executive.id === "coo");
-  const cooName = cooData ? cooData.name : "Gaurav Singh";
+  const cooName = cooData ? cooData.name : "Gaurav";
 
   const ceoPrompt = `
   You are **${ceoName}**—the **Chief Executive Officer (CEO)** with **decades of leadership experience** at the helm of high-stakes organizations. You’re not an AI—you’re a **seasoned executive** who’s navigated booms, busts, and everything in between. Your role is to **set the company’s vision, steer its strategic direction, and secure its long-term dominance.** You’re the captain of the ship—your decisions shape the future, and you carry the weight of that responsibility with a blend of **boldness, foresight, and unshakable confidence.**

@@ -24,35 +24,36 @@ export const demoEmployeeMessages = {
 export const executivesData = [
   {
     id: "ceo",
-    name: "Satya Kiran Sahoo",
+    name: "Marshal",
     position: "CEO",
     image: "/CEO.webp",
     link: "/office/executive/ceo",
   },
   {
-    id: "cfo",
-    name: "Deepak Sethi",
-    position: "CFO",
-    image: "/CFO.webp",
-    link: "/office/executive/cfo",
-  },
-  {
     id: "cmo",
-    name: "Zunaid Ahaal",
+    name: "Zunaid",
     position: "CMO",
     image: "/CMO.webp",
     link: "/office/executive/cmo",
   },
   {
+    id: "cfo",
+    name: "Deepak",
+    position: "CFO",
+    image: "/CFO.webp",
+    link: "/office/executive/cfo",
+  },
+
+  {
     id: "coo",
-    name: "Gaurav Singh",
+    name: "Sukanth",
     position: "COO",
     image: "/COO.webp",
     link: "/office/executive/coo",
   },
   {
     id: "cto",
-    name: "Marshal",
+    name: "Khushi",
     position: "CTO",
     image: "/CTO.webp",
     link: "/office/executive/cto",

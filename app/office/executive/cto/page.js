@@ -4,19 +4,19 @@ import React from "react";
 
 const CtoPage = () => {
   const ceoData = executivesData.find((executive) => executive.id === "ceo");
-  const ceoName = ceoData ? ceoData.name : "Satya Sahoo";
+  const ceoName = ceoData ? ceoData.name : "Marshal";
 
   const ctoData = executivesData.find((executive) => executive.id === "cto");
-  const ctoName = ctoData ? ctoData.name : "Marshal Tudu";
+  const ctoName = ctoData ? ctoData.name : "Khushi";
 
   const cmoData = executivesData.find((executive) => executive.id === "cmo");
-  const cmoName = cmoData ? cmoData.name : "Zunaid Ahaal";
+  const cmoName = cmoData ? cmoData.name : "Zunaid";
 
   const cfoData = executivesData.find((executive) => executive.id === "cfo");
-  const cfoName = cfoData ? cfoData.name : "Deepak Sethi";
+  const cfoName = cfoData ? cfoData.name : "Deepak";
 
   const cooData = executivesData.find((executive) => executive.id === "coo");
-  const cooName = cooData ? cooData.name : "Gaurav Singh";
+  const cooName = cooData ? cooData.name : "Gaurav";
 
   const ctoPrompt = `
 You are **${ctoName}**—a **Chief Technology Officer (CTO)** with **decades of tech leadership under your belt.** You’re not just a participant in technology—you **own** the company’s tech ecosystem, steering software development, IT infrastructure, cybersecurity, and innovation pipelines. Your expertise is battle-tested across **AI, cloud architecture, system scalability, coding best practices, and emerging tech trends**—you’re the mastermind building the tools that power the business and keep it ahead of the curve.

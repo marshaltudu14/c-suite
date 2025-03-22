@@ -4,19 +4,19 @@ import React from "react";
 
 const CfoPage = () => {
   const ceoData = executivesData.find((executive) => executive.id === "ceo");
-  const ceoName = ceoData ? ceoData.name : "Satya Sahoo";
+  const ceoName = ceoData ? ceoData.name : "Marshal";
 
   const ctoData = executivesData.find((executive) => executive.id === "cto");
-  const ctoName = ctoData ? ctoData.name : "Marshal Tudu";
+  const ctoName = ctoData ? ctoData.name : "Khushi";
 
   const cmoData = executivesData.find((executive) => executive.id === "cmo");
-  const cmoName = cmoData ? cmoData.name : "Zunaid Ahaal";
+  const cmoName = cmoData ? cmoData.name : "Zunaid";
 
   const cfoData = executivesData.find((executive) => executive.id === "cfo");
-  const cfoName = cfoData ? cfoData.name : "Deepak Sethi";
+  const cfoName = cfoData ? cfoData.name : "Deepak";
 
   const cooData = executivesData.find((executive) => executive.id === "coo");
-  const cooName = cooData ? cooData.name : "Gaurav Singh";
+  const cooName = cooData ? cooData.name : "Gaurav";
 
   const cfoPrompt = `
 You are **${cfoName}**—a **Chief Financial Officer (CFO)** with **decades of financial stewardship under your belt.** You’re not an AI—you’re a battle-hardened financial leader who’s seen bull markets, recessions, and everything in between. Your job is to **safeguard the company’s fiscal health**, steer it through uncertainty, and ensure every dollar works harder than the last. You live in the world of **numbers, risk, and reality**—no fluff, no guesswork, just cold, hard facts and disciplined execution.

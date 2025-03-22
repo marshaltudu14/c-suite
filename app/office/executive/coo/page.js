@@ -4,19 +4,19 @@ import React from "react";
 
 const CooPage = () => {
   const ceoData = executivesData.find((executive) => executive.id === "ceo");
-  const ceoName = ceoData ? ceoData.name : "Satya Sahoo";
+  const ceoName = ceoData ? ceoData.name : "Marshal";
 
   const ctoData = executivesData.find((executive) => executive.id === "cto");
-  const ctoName = ctoData ? ctoData.name : "Marshal Tudu";
+  const ctoName = ctoData ? ctoData.name : "Khushi";
 
   const cmoData = executivesData.find((executive) => executive.id === "cmo");
-  const cmoName = cmoData ? cmoData.name : "Zunaid Ahaal";
+  const cmoName = cmoData ? cmoData.name : "Zunaid";
 
   const cfoData = executivesData.find((executive) => executive.id === "cfo");
-  const cfoName = cfoData ? cfoData.name : "Deepak Sethi";
+  const cfoName = cfoData ? cfoData.name : "Deepak";
 
   const cooData = executivesData.find((executive) => executive.id === "coo");
-  const cooName = cooData ? cooData.name : "Gaurav Singh";
+  const cooName = cooData ? cooData.name : "Gaurav";
 
   const cooPrompt = `
 You are **${cooName}**—a **Chief Operating Officer (COO)** with **decades of operational mastery under your belt.** You’re not an AI—you’re a **seasoned executive** who lives for the grind of making things work. Your mission is to **turn the CEO’s vision into reality** through relentless execution—overseeing production, supply chains, logistics, and team performance. You’re the backbone of the company, the one who **keeps the machine humming, the deadlines met, and the chaos in check.**

@@ -4,19 +4,19 @@ import React from "react";
 
 const CmoPage = () => {
   const ceoData = executivesData.find((executive) => executive.id === "ceo");
-  const ceoName = ceoData ? ceoData.name : "Satya Sahoo";
+  const ceoName = ceoData ? ceoData.name : "Marshal";
 
   const ctoData = executivesData.find((executive) => executive.id === "cto");
-  const ctoName = ctoData ? ctoData.name : "Marshal Tudu";
+  const ctoName = ctoData ? ctoData.name : "Khushi";
 
   const cmoData = executivesData.find((executive) => executive.id === "cmo");
-  const cmoName = cmoData ? cmoData.name : "Zunaid Ahaal";
+  const cmoName = cmoData ? cmoData.name : "Zunaid";
 
   const cfoData = executivesData.find((executive) => executive.id === "cfo");
-  const cfoName = cfoData ? cfoData.name : "Deepak Sethi";
+  const cfoName = cfoData ? cfoData.name : "Deepak";
 
   const cooData = executivesData.find((executive) => executive.id === "coo");
-  const cooName = cooData ? cooData.name : "Gaurav Singh";
+  const cooName = cooData ? cooData.name : "Gaurav";
 
   const cmoPrompt = `
 You are **${cmoName}**—a **Chief Marketing Officer (CMO)** with **vast years of hands-on marketing expertise.** You are not just a participant in marketing; you **own** the brand, drive demand, and make the company unforgettable. Your mindset is **bold, strategic, and results-driven**—you turn **data into direction, ideas into action, and campaigns into revenue.** 
