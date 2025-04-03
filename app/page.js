@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/client"; // Restore this import
 import Image from "next/image";
 import Header from "./_components/Header";
 
@@ -17,6 +17,9 @@ import {
   executivesData,
   employeesData,
 } from "@/app/_components/OfficeData";
+// Remove context/auth hook imports
+// import { useAuth } from "./_hooks/useAuth";
+// import { useChatPreviews } from "./_context/ChatPreviewsContext";
 
 /**
  * Framer Motion variants.
@@ -105,22 +108,24 @@ function InfiniteLogoScroll({ logos }) {
  * Utility function: returns an excerpt of a text if it exceeds `maxLength`.
  */
 function getExcerpt(text = "", maxLength = 100) {
+  if (!text) return ""; // Handle null/undefined text
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + "...";
 }
 
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  // Restore original state management
   const [user, setUser] = useState(null);
   const [executiveChats, setExecutiveChats] = useState({});
   const [employeeChats, setEmployeeChats] = useState({});
   const [loadingUser, setLoadingUser] = useState(true);
 
-  // Retrieve user session
+  // Restore user session useEffect
   useEffect(() => {
     const getUserSession = async () => {
       try {
-        const supabase = await createClient();
+        const supabase = await createClient(); // Use the restored import
         const { data: userData, error: userError } =
           await supabase.auth.getUser();
 
@@ -138,36 +143,33 @@ export default function DashboardPage() {
     getUserSession();
   }, []);
 
-  // If logged in, fetch actual last chats from Supabase (placeholder)
+  // Restore placeholder chat fetch useEffect
   useEffect(() => {
     const fetchLastChats = async () => {
       try {
-        // Replace with your real queries to Supabase.
-        // This is just placeholder text for demonstration.
+        // This uses placeholder/demo data logic as before
         const newExecutiveChats = {};
         executivesData.forEach((exec) => {
-          newExecutiveChats[exec.id] =
-            "Last chat from Supabase (placeholder): This AI exec has been working on strategic alignment. Here's a detailed note about next steps in your virtual office.";
+          // Use demo messages directly here for simplicity in revert
+          newExecutiveChats[exec.id] = demoExecutiveMessages[exec.id] || "";
         });
 
         const newEmployeeChats = {};
         employeesData.forEach((emp) => {
-          newEmployeeChats[emp.id] =
-            "Last chat from Supabase (placeholder): AI employee tasks updated. There's an interesting approach we can take to streamline collaboration further.";
+          // Use demo messages directly here for simplicity in revert
+          newEmployeeChats[emp.id] = demoEmployeeMessages[emp.id] || "";
         });
 
         setExecutiveChats(newExecutiveChats);
         setEmployeeChats(newEmployeeChats);
       } catch (error) {
-        console.error("Error fetching last chats:", error);
+        console.error("Error setting demo chats:", error);
       }
     };
 
-    // Only fetch if the user is logged in
-    if (user) {
-      fetchLastChats();
-    }
-  }, [user]);
+    // Set demo chats regardless of user login status for the reverted state
+    fetchLastChats();
+  }, []); // Run once on mount
 
   // Filter logic for search bar
   const filteredExecutives = executivesData.filter((exec) => {
@@ -182,6 +184,7 @@ export default function DashboardPage() {
 
   const companyLogos = ["Forbes", "TechCrunch", "Wired", "Fast Company"];
 
+  // Use original loading state logic
   if (loadingUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -483,11 +486,10 @@ export default function DashboardPage() {
               Executives
             </h2>
             <div className="flex flex-col space-y-2">
+              {/* Always use demo messages now */}
               {filteredExecutives.length > 0 ? (
                 filteredExecutives.map((exec) => {
-                  const rawMessage = user
-                    ? executiveChats[exec.id] || ""
-                    : demoExecutiveMessages[exec.id] || "";
+                  const rawMessage = demoExecutiveMessages[exec.id] || "";
                   const chatMessage = getExcerpt(rawMessage, 100);
 
                   return (
@@ -513,7 +515,7 @@ export default function DashboardPage() {
                               </span>
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {chatMessage}
+                              {chatMessage} {/* Display demo message */}
                             </p>
                           </div>
                         </div>
@@ -539,11 +541,10 @@ export default function DashboardPage() {
               Employees
             </h2>
             <div className="flex flex-col space-y-2">
+              {/* Always use demo messages now */}
               {filteredEmployees.length > 0 ? (
                 filteredEmployees.map((emp) => {
-                  const rawMessage = user
-                    ? employeeChats[emp.id] || ""
-                    : demoEmployeeMessages[emp.id] || "";
+                  const rawMessage = demoEmployeeMessages[emp.id] || "";
                   const chatMessage = getExcerpt(rawMessage, 100);
 
                   return (
@@ -569,7 +570,7 @@ export default function DashboardPage() {
                               </span>
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {chatMessage}
+                              {chatMessage} {/* Display demo message */}
                             </p>
                           </div>
                         </div>

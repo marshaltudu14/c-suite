@@ -9,7 +9,8 @@ const estimateTokenCount = (text) => {
   return Math.ceil(text.length / 4);
 };
 
-export function useChatHistory(user, setMessages) {
+// Removed setMessages parameter
+export function useChatHistory(user) {
   const [chatHistory, setChatHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -30,30 +31,25 @@ export function useChatHistory(user, setMessages) {
   };
 
   // Limit messages to stay under token limit, preserving system prompts
+  // Note: This function might be less relevant now if history isn't directly passed to useChat's messages state
   const limitMessagesToTokenCount = (messages, systemPrompt = "") => {
     let totalTokens = 0;
     const limitedMessages = [];
 
-    // First, estimate system prompt tokens (these should never be truncated)
     const systemPromptTokens = estimateTokenCount(systemPrompt);
     systemPromptTokensRef.current = systemPromptTokens;
-
-    // Available tokens for conversation messages
     const availableTokens = maxTokens - systemPromptTokens;
 
     if (availableTokens <= 0) {
       console.warn("System prompt exceeds token limit, may cause issues");
-      // Still try to include at least some messages
     }
 
-    // Process messages from newest to oldest (reverse order)
-    // This ensures we keep the most recent messages
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
       const tokenCount = estimateTokenCount(msg.content);
 
       if (totalTokens + tokenCount <= availableTokens) {
-        limitedMessages.unshift(msg); // Add to beginning to maintain order
+        limitedMessages.unshift(msg);
         totalTokens += tokenCount;
       } else {
         console.log(
@@ -61,7 +57,7 @@ export function useChatHistory(user, setMessages) {
             messages.length - limitedMessages.length
           } older messages to stay within token limit`
         );
-        break; // Stop once we hit the token limit
+        break;
       }
     }
 
@@ -73,244 +69,206 @@ export function useChatHistory(user, setMessages) {
     return limitedMessages;
   };
 
-  const fetchChatHistory = async (agentId) => {
-    if (!user) return;
+  // Wrap fetchChatHistory with useCallback
+  const fetchChatHistory = useCallback(
+    async (agentId) => {
+      if (!user) return;
 
-    setLoadingHistory(true);
-    setPage(1); // Reset pagination
-    oldestMessageIdRef.current = null;
-    setHasMoreMessages(true);
+      setLoadingHistory(true);
+      setPage(1);
+      oldestMessageIdRef.current = null;
+      setHasMoreMessages(true);
 
-    try {
-      // Improved API call with better error handling
-      let response;
       try {
-        // Fetch the latest messages first (newest messages)
-        response = await fetch(
-          `/api/chat-history?agent=${agentId}&limit=${pageSize}&order=desc`
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-      } catch (fetchError) {
-        console.error("Network error fetching chat history:", fetchError);
-        toast.error("Network error loading chat history. Please try again.");
-        setLoadingHistory(false);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        // Sort by created_at to ensure correct order (newest last)
-        const sortedData = [...data.data].sort(
-          (a, b) => new Date(a.created_at) - new Date(b.created_at)
-        );
-
-        setChatHistory(sortedData);
-
-        // Set the oldest message ID for pagination
-        if (sortedData.length > 0) {
-          oldestMessageIdRef.current = sortedData[0].id;
-          console.log(
-            `Set oldest message ID for pagination: ${sortedData[0].id}`
+        let response;
+        try {
+          response = await fetch(
+            `/api/chat-history?agent=${agentId}&limit=${pageSize}&order=desc`
           );
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+        } catch (fetchError) {
+          console.error("Network error fetching chat history:", fetchError);
+          toast.error("Network error loading chat history. Please try again.");
+          setLoadingHistory(false);
+          return;
         }
 
-        // Check if we have more messages
-        setHasMoreMessages(data.data.length >= pageSize);
+        const data = await response.json();
 
-        // Convert history to messages format
-        const historyMessages = convertHistoryToMessages(sortedData);
+        if (data.success && data.data) {
+          const sortedData = [...data.data].sort(
+            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+          );
+          setChatHistory(sortedData); // Store the raw history
 
-        // Get the current system prompt from the chat interface (if available)
-        // For now we'll use an empty string as we don't have direct access to it
-        const currentSystemPrompt = "";
+          if (sortedData.length > 0) {
+            oldestMessageIdRef.current = sortedData[0].id;
+          }
+          setHasMoreMessages(data.data.length >= pageSize);
 
-        // Apply token limiting with system prompt consideration
-        const limitedMessages = limitMessagesToTokenCount(
-          historyMessages,
-          currentSystemPrompt
-        );
-
-        // Log information about the loaded messages
-        console.log(
-          `Loaded ${sortedData.length} messages, using ${limitedMessages.length} after token limiting`
-        );
-
-        setMessages(limitedMessages);
-      } else {
-        setChatHistory([]);
-        setMessages([]);
-        setHasMoreMessages(false);
+          // Convert history to messages format for potential use with initialMessages
+          const historyMessages = convertHistoryToMessages(sortedData);
+          // Apply token limiting if needed before passing as initialMessages
+          // const limitedMessages = limitMessagesToTokenCount(historyMessages, ""); // Pass system prompt if available
+          // console.log(`Loaded ${sortedData.length} messages, using ${limitedMessages.length} after token limiting`);
+          // Don't call setMessages here
+        } else {
+          setChatHistory([]);
+          setHasMoreMessages(false);
+        }
+      } catch (error) {
+        console.error("Error processing chat history:", error);
+        toast.error("Failed to process chat history");
+      } finally {
+        setLoadingHistory(false);
       }
-    } catch (error) {
-      console.error("Error processing chat history:", error);
-      toast.error("Failed to process chat history");
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+    },
+    [user, pageSize] // Removed setMessages dependency
+  );
 
-  const fetchOlderMessages = async (agentId) => {
-    if (!user || !hasMoreMessages || loadingOlderMessages) return;
-    if (!oldestMessageIdRef.current) {
-      console.warn("No oldest message ID available for pagination");
-      return;
-    }
-
-    setLoadingOlderMessages(true);
-    try {
-      const nextPage = page + 1;
-
-      // Improved API call with better error handling
-      let response;
-      try {
-        console.log(
-          `Fetching older messages before ID: ${oldestMessageIdRef.current}`
-        );
-
-        // Fetch messages older than the oldest message we currently have
-        response = await fetch(
-          `/api/chat-history?agent=${agentId}&limit=${pageSize}&before=${oldestMessageIdRef.current}`
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-      } catch (fetchError) {
-        console.error("Network error fetching older messages:", fetchError);
-        toast.error("Network error loading older messages. Please try again.");
-        setLoadingOlderMessages(false);
+  // Wrap fetchOlderMessages with useCallback
+  const fetchOlderMessages = useCallback(
+    async (agentId) => {
+      if (!user || !hasMoreMessages || loadingOlderMessages) return;
+      if (!oldestMessageIdRef.current) {
+        console.warn("No oldest message ID available for pagination");
         return;
       }
 
-      const data = await response.json();
-
-      if (data.success && data.data && data.data.length > 0) {
-        // Sort by created_at to ensure correct order (oldest first)
-        const sortedNewData = [...data.data].sort(
-          (a, b) => new Date(a.created_at) - new Date(b.created_at)
-        );
-
-        // Update the oldest message ID for next pagination
-        if (sortedNewData.length > 0) {
-          oldestMessageIdRef.current = sortedNewData[0].id;
-          console.log(`Updated oldest message ID to: ${sortedNewData[0].id}`);
+      setLoadingOlderMessages(true);
+      try {
+        const nextPage = page + 1;
+        let response;
+        try {
+          response = await fetch(
+            `/api/chat-history?agent=${agentId}&limit=${pageSize}&before=${oldestMessageIdRef.current}`
+          );
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+        } catch (fetchError) {
+          console.error("Network error fetching older messages:", fetchError);
+          toast.error(
+            "Network error loading older messages. Please try again."
+          );
+          setLoadingOlderMessages(false);
+          return;
         }
 
-        // Combine with existing history (older messages first, then current history)
-        const updatedHistory = [...sortedNewData, ...chatHistory];
-        setChatHistory(updatedHistory);
+        const data = await response.json();
 
-        // Convert combined history to messages format
-        const historyMessages = convertHistoryToMessages(updatedHistory);
+        if (data.success && data.data && data.data.length > 0) {
+          const sortedNewData = [...data.data].sort(
+            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+          );
 
-        // Get the current system prompt from the chat interface (if available)
-        // For now we'll use an empty string as we don't have direct access to it
-        const currentSystemPrompt = "";
+          if (sortedNewData.length > 0) {
+            oldestMessageIdRef.current = sortedNewData[0].id;
+          }
 
-        // Apply token limiting with system prompt consideration
-        const limitedMessages = limitMessagesToTokenCount(
-          historyMessages,
-          currentSystemPrompt
-        );
-        setMessages(limitedMessages);
+          const updatedHistory = [...sortedNewData, ...chatHistory];
+          setChatHistory(updatedHistory); // Update raw history
 
-        // Update pagination state
-        setPage(nextPage);
-        setHasMoreMessages(data.data.length >= pageSize);
+          // Convert combined history to messages format if needed elsewhere
+          // const historyMessages = convertHistoryToMessages(updatedHistory);
+          // Apply token limiting if needed
+          // const limitedMessages = limitMessagesToTokenCount(historyMessages, "");
+          // Don't call setMessages here
 
-        console.log(
-          `Loaded ${data.data.length} older messages, now have ${updatedHistory.length} total messages`
-        );
-      } else {
-        setHasMoreMessages(false);
-        console.log("No more older messages available");
-      }
-    } catch (error) {
-      console.error("Error processing older messages:", error);
-      toast.error("Failed to process older messages");
-    } finally {
-      setLoadingOlderMessages(false);
-    }
-  };
-
-  const clearChatHistory = async (selectedPerson) => {
-    if (!user || !selectedPerson) return;
-
-    try {
-      const response = await fetch(
-        `/api/chat-history?agent=${selectedPerson.id}`,
-        {
-          method: "DELETE",
+          setPage(nextPage);
+          setHasMoreMessages(data.data.length >= pageSize);
+        } else {
+          setHasMoreMessages(false);
         }
-      );
-      const data = await response.json();
-
-      if (data.success) {
-        setChatHistory([]);
-        setMessages([]);
-        setPage(1);
-        oldestMessageIdRef.current = null;
-        setHasMoreMessages(false);
-        toast.success("Chat history cleared");
+      } catch (error) {
+        console.error("Error processing older messages:", error);
+        toast.error("Failed to process older messages");
+      } finally {
+        setLoadingOlderMessages(false);
       }
-    } catch (error) {
-      console.error("Error clearing chat history:", error);
-      toast.error("Failed to clear chat history");
-    }
-  };
+    },
+    [
+      user,
+      hasMoreMessages,
+      loadingOlderMessages,
+      page,
+      pageSize,
+      chatHistory,
+      // Removed setMessages dependency
+    ]
+  );
 
-  const fetchLastChats = async (executivesData, employeesData) => {
-    if (!user) return { executivesChats: {}, employeesChats: {} };
-
-    try {
-      // Instead of fetching last messages for each agent, just use default text
-      // This optimizes the chat interface by reducing API calls
-
-      // Create default chat previews for executives
-      const newExecutiveChats = {};
-      for (const exec of executivesData) {
-        newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
+  // Wrap clearChatHistory with useCallback
+  const clearChatHistory = useCallback(
+    async (selectedPerson) => {
+      if (!user || !selectedPerson) return;
+      try {
+        const response = await fetch(
+          `/api/chat-history?agent=${selectedPerson.id}`,
+          { method: "DELETE" }
+        );
+        const data = await response.json();
+        if (data.success) {
+          setChatHistory([]); // Clear local raw history
+          // Don't call setMessages here
+          setPage(1);
+          oldestMessageIdRef.current = null;
+          setHasMoreMessages(false);
+          toast.success("Chat history cleared");
+        }
+      } catch (error) {
+        console.error("Error clearing chat history:", error);
+        toast.error("Failed to clear chat history");
       }
+    },
+    [user] // Removed setMessages dependency
+  );
 
-      // Create default chat previews for employees
-      const newEmployeeChats = {};
-      for (const emp of employeesData) {
-        newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
+  // fetchLastChats remains unchanged as it doesn't interact with setMessages
+  const fetchLastChats = useCallback(
+    async (executivesData, employeesData) => {
+      if (!user) return { executivesChats: {}, employeesChats: {} };
+      try {
+        const newExecutiveChats = {};
+        for (const exec of executivesData) {
+          newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
+        }
+        const newEmployeeChats = {};
+        for (const emp of employeesData) {
+          newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
+        }
+        return {
+          executivesChats: newExecutiveChats,
+          employeesChats: newEmployeeChats,
+        };
+      } catch (error) {
+        console.error("Error setting up chat previews:", error);
+        return { executivesChats: {}, employeesChats: {} };
       }
+    },
+    [user]
+  );
 
-      return {
-        executivesChats: newExecutiveChats,
-        employeesChats: newEmployeeChats,
-      };
-    } catch (error) {
-      console.error("Error setting up chat previews:", error);
-      return { executivesChats: {}, employeesChats: {} };
-    }
-  };
-
-  // Check if we need to load more messages when oldest message is in view
+  // checkAndLoadMoreMessages remains largely the same, relying on fetchOlderMessages
   const checkAndLoadMoreMessages = useCallback(
     (scrollTop, agentId, isOldestMessageInView = false) => {
-      // If the oldest message is in view and we have more messages to load
+      const loadOlder = async () => {
+        await fetchOlderMessages(agentId);
+      };
       if (isOldestMessageInView && hasMoreMessages && !loadingOlderMessages) {
-        console.log("Oldest message is in view, loading more messages...");
-        fetchOlderMessages(agentId);
-      }
-      // Also keep the original scroll-based loading as a fallback
-      else if (scrollTop < 100 && hasMoreMessages && !loadingOlderMessages) {
-        console.log("Near top of scroll container, loading more messages...");
-        fetchOlderMessages(agentId);
+        loadOlder();
+      } else if (scrollTop < 100 && hasMoreMessages && !loadingOlderMessages) {
+        loadOlder();
       }
     },
     [hasMoreMessages, loadingOlderMessages, fetchOlderMessages]
   );
 
+  // Return the raw chatHistory along with other states/functions
   return {
-    chatHistory,
+    chatHistory, // Return the raw history array
     loadingHistory,
     loadingOlderMessages,
     hasMoreMessages,
@@ -319,5 +277,7 @@ export function useChatHistory(user, setMessages) {
     clearChatHistory,
     fetchLastChats,
     checkAndLoadMoreMessages,
+    convertHistoryToMessages, // Expose converter function if needed by client
+    limitMessagesToTokenCount, // Expose limiter function if needed
   };
 }

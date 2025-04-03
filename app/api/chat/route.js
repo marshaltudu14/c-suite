@@ -50,12 +50,11 @@ export async function POST(req) {
       system: fullSystemPrompt,
       messages: messages,
       onText: (text) => {
-        console.log("Streaming chunk:", text);
         // Accumulate the text chunks to build the complete response
         fullCompletion += text;
       },
       onCompletion: async (completion) => {
-        console.log("Chat complete:", completion);
+        // Optional: Add logic here if needed on completion
       },
     });
 
@@ -74,8 +73,6 @@ export async function POST(req) {
 
         if (error) {
           console.error("Error saving assistant message to Supabase:", error);
-        } else {
-          console.log("Successfully saved assistant message to Supabase");
         }
       }
     } catch (saveError) {

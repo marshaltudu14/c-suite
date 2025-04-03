@@ -24,9 +24,7 @@ export async function GET(req) {
     }
 
     const url = new URL(req.url);
-    const agent = url.searchParams.get("agent")
-      ? url.searchParams.get("agent").toUpperCase()
-      : null;
+    const agent = url.searchParams.get("agent") || null; // Removed .toUpperCase()
     const limit = parseInt(url.searchParams.get("limit") || "10", 10);
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     const order = url.searchParams.get("order") || "asc";
@@ -110,9 +108,7 @@ export async function DELETE(req) {
     }
 
     const url = new URL(req.url);
-    const agent = url.searchParams.get("agent")
-      ? url.searchParams.get("agent").toUpperCase()
-      : null;
+    const agent = url.searchParams.get("agent") || null; // Removed .toUpperCase()
 
     console.log("DELETE params:", { agent });
 

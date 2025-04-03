@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { ChatPreviewsProvider } from "./_context/ChatPreviewsContext"; // Import the provider
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,9 +64,13 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          {/* <GlobalBackground /> */}
-          {children}
-          <Toaster />
+          <ChatPreviewsProvider>
+            {" "}
+            {/* Wrap children with the provider */}
+            {/* <GlobalBackground /> */}
+            {children}
+            <Toaster />
+          </ChatPreviewsProvider>
         </ThemeProvider>
       </body>
     </html>

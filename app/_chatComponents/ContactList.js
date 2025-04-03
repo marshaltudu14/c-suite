@@ -11,6 +11,7 @@ import {
   demoExecutiveMessages,
   demoEmployeeMessages,
 } from "@/app/_components/OfficeData";
+import { useChatPreviews } from "@/app/_context/ChatPreviewsContext"; // Import context hook
 
 import { getExcerpt } from "@/app/_chatComponents/Components";
 import { containerVariants, itemVariants } from "@/app/_utils/FramerAnimations";
@@ -24,13 +25,14 @@ import { Input } from "@/components/ui/input";
 export default function ContactsList({
   searchQuery,
   setSearchQuery,
-  user,
-  executivesChats,
-  employeesChats,
-  loadingUser,
+  user, // Keep user prop to differentiate logged-in state
+  // Remove executivesChats, employeesChats props
+  loadingUser, // Keep loadingUser prop
   currentCategory,
   currentPersonId,
 }) {
+  const { chatPreviews, loadingPreviews } = useChatPreviews(); // Use context hook
+
   // Filter logic
   const filteredExecutives = executivesData.filter((exec) => {
     const text = `${exec.name} ${exec.position}`.toLowerCase();
@@ -80,15 +82,22 @@ export default function ContactsList({
               Executives
             </h2>
             <div className="flex flex-col space-y-2">
-              {filteredExecutives.length > 0 ? (
+              {loadingPreviews && user ? ( // Show skeletons if logged in and loading previews
+                Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton
+                    key={`exec-skel-${index}`}
+                    className="h-16 w-full rounded-lg"
+                  />
+                ))
+              ) : filteredExecutives.length > 0 ? (
                 filteredExecutives.map((exec) => {
-                  // If user is logged in, show Supabase-sourced data, otherwise show demo
+                  // Use context previews if logged in, otherwise use demo messages
                   const rawMessage = user
-                    ? executivesChats[exec.id] || ""
-                    : demoExecutiveMessages[exec.id] || "";
+                    ? chatPreviews[exec.id] || "" // Use context preview
+                    : demoExecutiveMessages[exec.id] || ""; // Use demo message
                   const chatMessage = getExcerpt(rawMessage, 100);
 
-                  const linkHref = `/office/executive/${exec.id}`;
+                  const linkHref = exec.link; // Use link from updated OfficeData
                   const isActive =
                     currentCategory === "executive" &&
                     currentPersonId === exec.id;
@@ -121,7 +130,9 @@ export default function ContactsList({
                             </p>
                             {/* Excerpt of last message */}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {chatMessage}
+                              {chatMessage ||
+                                (user ? "No recent messages" : "")}{" "}
+                              {/* Handle empty preview */}
                             </p>
                           </div>
                         </div>
@@ -147,14 +158,22 @@ export default function ContactsList({
               Employees
             </h2>
             <div className="flex flex-col space-y-2">
-              {filteredEmployees.length > 0 ? (
+              {loadingPreviews && user ? ( // Show skeletons if logged in and loading previews
+                Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton
+                    key={`emp-skel-${index}`}
+                    className="h-16 w-full rounded-lg"
+                  />
+                ))
+              ) : filteredEmployees.length > 0 ? (
                 filteredEmployees.map((emp) => {
+                  // Use context previews if logged in, otherwise use demo messages
                   const rawMessage = user
-                    ? employeesChats[emp.id] || ""
-                    : demoEmployeeMessages[emp.id] || "";
+                    ? chatPreviews[emp.id] || "" // Use context preview
+                    : demoEmployeeMessages[emp.id] || ""; // Use demo message
                   const chatMessage = getExcerpt(rawMessage, 100);
 
-                  const linkHref = `/office/employee/${emp.id}`;
+                  const linkHref = emp.link; // Use link from updated OfficeData
                   const isActive =
                     currentCategory === "employee" &&
                     currentPersonId === emp.id;
@@ -187,7 +206,9 @@ export default function ContactsList({
                             </p>
                             {/* Excerpt of last message */}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {chatMessage}
+                              {chatMessage ||
+                                (user ? "No recent messages" : "")}{" "}
+                              {/* Handle empty preview */}
                             </p>
                           </div>
                         </div>

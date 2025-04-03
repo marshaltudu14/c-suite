@@ -19,20 +19,29 @@ export function useAuth() {
 
         if (error) {
           console.error("Error fetching user:", error);
-          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          // Only redirect if not on the homepage
+          if (pathname !== "/") {
+            router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          }
           return;
         }
 
         if (!data?.user) {
           // If user is null, force a login
-          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          // Only redirect if not on the homepage
+          if (pathname !== "/") {
+            router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          }
           return;
         }
 
         setUser(data.user);
       } catch (err) {
         console.error("Error checking user:", err);
-        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        // Only redirect if not on the homepage
+        if (pathname !== "/") {
+          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        }
       } finally {
         setLoadingUser(false);
       }
