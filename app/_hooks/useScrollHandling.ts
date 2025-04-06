@@ -10,7 +10,7 @@ interface Message { // Assuming a basic message structure
 }
 
 interface SelectedPerson { // Assuming a basic person structure
-  id: string | number;
+  id: string; // ID is likely always a string (e.g., from DB or slug)
   // Add other person properties if needed
 }
 
@@ -22,7 +22,8 @@ interface ScrollPosition {
 export function useScrollHandling(
   chatContainerRef: RefObject<HTMLDivElement>,
   messages: Message[],
-  checkAndLoadMoreMessages: (scrollTop: number, personId: string | number) => void,
+  // Update callback signature to expect string for personId
+  checkAndLoadMoreMessages: (scrollTop: number, personId: string, isOldestMessageInView?: boolean) => void,
   selectedPerson: SelectedPerson | null
 ) {
   const [showScrollToBottom, setShowScrollToBottom] = useState<boolean>(false);
@@ -46,7 +47,8 @@ export function useScrollHandling(
       console.log(
         `Scroll position: ${scrollTop}px from top, checking for more messages...`
       );
-      checkAndLoadMoreMessages(scrollTop, selectedPerson.id);
+      // Pass the boolean flag if needed by the implementation
+      checkAndLoadMoreMessages(scrollTop, selectedPerson.id, false); // Assuming false when scrolling near top
     }
   };
 

@@ -63,14 +63,17 @@ const formSchema = z
   })
   .and(passwordMatchSchema);
 
+// Infer type from Zod schema
+type SignupFormValues = z.infer<typeof formSchema>;
+
 export default function SignupForm() {
-  const [serverError, setServerError] = useState(null);
+  const [serverError, setServerError] = useState<string | null>(null); // Type state
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const urlParams = useSearchParams();
   const redirectTo = urlParams.get("redirect") || "/";
 
-  const form = useForm({
+  const form = useForm<SignupFormValues>({ // Add type argument to useForm
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
@@ -79,7 +82,7 @@ export default function SignupForm() {
     },
   });
 
-  const handleSubmit = async (data) => {
+  const handleSubmit = async (data: SignupFormValues) => { // Type data parameter
     setServerError(null);
     setIsLoading(true);
 

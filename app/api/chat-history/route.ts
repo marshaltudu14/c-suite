@@ -1,8 +1,8 @@
-// app/api/chat-history/route.js
+// app/api/chat-history/route.ts
 import { createClient } from "@/utils/supabase/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server"; // Import NextRequest
 
-export async function GET(req) {
+export async function GET(req: NextRequest) { // Type req
   try {
     const supabase = await createClient();
 
@@ -78,15 +78,17 @@ export async function GET(req) {
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error("Error in /api/chat-history:", error);
+    console.error("Error in /api/chat-history GET:", error);
+    // Type check the error
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch chat history";
     return NextResponse.json(
-      { success: false, error: "Failed to fetch chat history" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
-export async function DELETE(req) {
+export async function DELETE(req: NextRequest) { // Type req
   try {
     const supabase = await createClient();
 
@@ -132,8 +134,10 @@ export async function DELETE(req) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in /api/chat-history DELETE:", error);
+    // Type check the error
+    const errorMessage = error instanceof Error ? error.message : "Failed to delete chat history";
     return NextResponse.json(
-      { success: false, error: "Failed to delete chat history" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

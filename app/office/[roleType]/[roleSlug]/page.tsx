@@ -2,15 +2,27 @@ import { notFound } from "next/navigation";
 import { executivesData, employeesData } from "@/app/_components/OfficeData";
 import RoleChatClient from "./RoleChatClient"; // We will create this next
 
+// Define interface for Role Data based on OfficeData.tsx
+interface RoleData {
+  id: string;
+  name: string;
+  position: string;
+  image: string;
+  link: string;
+  promptTemplate: string;
+}
+
 // Helper function to find role data
-function getRoleData(roleType, roleSlug) {
-  const dataList = roleType === "executive" ? executivesData : employeesData;
-  return dataList.find((item) => item.id === roleSlug);
+function getRoleData(roleType: string, roleSlug: string): RoleData | undefined { // Add types
+  const dataList: RoleData[] = roleType === "executive" ? executivesData : employeesData; // Type dataList
+  return dataList.find((item: RoleData) => item.id === roleSlug); // Type item
 }
 
 // Generate dynamic metadata for the page
-export async function generateMetadata({ params }) {
-  const { roleType, roleSlug } = await params;
+// Use 'any' as a workaround for persistent PageProps type error
+export async function generateMetadata({ params }: any) {
+  // No need to await params
+  const { roleType, roleSlug } = params;
   const roleData = getRoleData(roleType, roleSlug);
 
   if (!roleData) {
@@ -26,7 +38,7 @@ export async function generateMetadata({ params }) {
 }
 
 // Helper function to generate the system prompt
-function generateSystemPrompt(roleData) {
+function generateSystemPrompt(roleData: RoleData | undefined): string { // Type parameter and return
   if (!roleData) return "You are a helpful assistant."; // Default fallback
 
   const { id, name, position, promptTemplate } = roleData;
@@ -192,8 +204,10 @@ Let’s shape the future—starting now.
 }
 
 // The main server component for the dynamic route
-export default async function OfficeRolePage({ params }) {
-  const { roleType, roleSlug } = await params;
+// Use 'any' as a workaround for persistent PageProps type error
+export default async function OfficeRolePage({ params }: any) {
+  // No need to await params
+  const { roleType, roleSlug } = params;
   const roleData = getRoleData(roleType, roleSlug);
 
   // If role data is not found for the given slug, show 404

@@ -198,7 +198,7 @@ export default function MyAccountDialog({ open, onOpenChange }: MyAccountDialogP
 
     const result = formSchema.safeParse(formValues);
     if (!result.success) {
-      const newErrors = {};
+      const newErrors: { [key: string]: string | undefined } = {}; // Add index signature type
       for (const issue of result.error.issues) {
         // Ensure path[0] is a string or number before using it as an index
         const pathKey = issue.path[0];

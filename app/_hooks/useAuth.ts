@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { User } from "@supabase/supabase-js"; // Import User type
 
 export function useAuth() {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null); // Explicitly type useState
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {

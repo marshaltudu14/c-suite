@@ -20,16 +20,16 @@ interface SelectedPerson {
 // Define prop types for ChatInput
 interface ChatInputProps {
   textareaRef: RefObject<HTMLTextAreaElement>;
-  // Assuming fileInputRef might have a custom onChange attached, adjust if not
-  fileInputRef: RefObject<HTMLInputElement & { onChange?: (e: ChangeEvent<HTMLInputElement>) => void }>;
+  fileInputRef: RefObject<HTMLInputElement>; // Simplify ref type
   input: string;
-  handleInputChange: (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
+  // Match the type provided by useChat hook
+  handleInputChange: (e: ChangeEvent<HTMLTextAreaElement> | ChangeEvent<HTMLInputElement>) => void;
   handleKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   handlePaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
-  customSubmit: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  customSubmit: () => void; // Change signature to accept no arguments
   selectedPerson: SelectedPerson | null;
   isLoading: boolean;
-  pastedContent: any; // Replace 'any' with the actual type if known
+  pastedContent: string; // Assume pastedContent is string based on useFileHandling
   attachments: File[];
 }
 
@@ -84,23 +84,24 @@ export default function ChatInput({
           </Tooltip>
         </TooltipProvider>
 
-        <input
-          ref={fileInputRef}
+        {/* Hidden file input - onChange is handled by the hook via RoleChatClient */}
+        {/* <input
+          ref={fileInputRef} // Ref is passed, but onChange is handled externally
           type="file"
           accept="image/*,.pdf"
           multiple
           className="hidden"
-          // Call the custom onChange if it exists on the ref's current value
-          onChange={(e) => fileInputRef.current?.onChange?.(e)}
           disabled={!selectedPerson || isLoading}
-        />
+        /> */}
+        {/* The actual hidden input is managed in RoleChatClient */}
+
 
         {/* Send button */}
         <Button
           className="h-9 w-9 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors"
           size="icon"
-          type="submit"
-          onClick={customSubmit}
+          type="button" // Change type to button as it doesn't submit a form directly
+          onClick={customSubmit} // Call the function without event
           disabled={
             !selectedPerson ||
             isLoading ||

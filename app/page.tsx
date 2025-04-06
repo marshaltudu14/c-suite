@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client"; // Restore this import
 import Image from "next/image";
 import Header from "./_components/Header";
+import { User } from "@supabase/supabase-js"; // Import User type
 
 // Import your data and messages
 import {
@@ -71,7 +72,8 @@ const logoVariants = {
 /**
  * Infinite Scroll Logo Component
  */
-function InfiniteLogoScroll({ logos }) {
+// Add type for logos prop
+function InfiniteLogoScroll({ logos }: { logos: string[] }) {
   const [logoIndex, setLogoIndex] = useState(0);
 
   useEffect(() => {
@@ -115,10 +117,10 @@ function getExcerpt(text = "", maxLength = 100) {
 
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  // Restore original state management
-  const [user, setUser] = useState(null);
-  const [executiveChats, setExecutiveChats] = useState({});
-  const [employeeChats, setEmployeeChats] = useState({});
+  // Add types to state
+  const [user, setUser] = useState<User | null>(null); // Type user state
+  const [executiveChats, setExecutiveChats] = useState<{ [key: string]: string }>({}); // Add index signature
+  const [employeeChats, setEmployeeChats] = useState<{ [key: string]: string }>({}); // Add index signature
   const [loadingUser, setLoadingUser] = useState(true);
 
   // Restore user session useEffect
@@ -148,16 +150,18 @@ export default function DashboardPage() {
     const fetchLastChats = async () => {
       try {
         // This uses placeholder/demo data logic as before
-        const newExecutiveChats = {};
+        const newExecutiveChats: { [key: string]: string } = {}; // Add index signature
         executivesData.forEach((exec) => {
           // Use demo messages directly here for simplicity in revert
-          newExecutiveChats[exec.id] = demoExecutiveMessages[exec.id] || "";
+          // Assuming demoExecutiveMessages has appropriate structure or cast if needed
+          newExecutiveChats[exec.id] = (demoExecutiveMessages as { [key: string]: string })[exec.id] || "";
         });
 
-        const newEmployeeChats = {};
+        const newEmployeeChats: { [key: string]: string } = {}; // Add index signature
         employeesData.forEach((emp) => {
           // Use demo messages directly here for simplicity in revert
-          newEmployeeChats[emp.id] = demoEmployeeMessages[emp.id] || "";
+          // Assuming demoEmployeeMessages has appropriate structure or cast if needed
+          newEmployeeChats[emp.id] = (demoEmployeeMessages as { [key: string]: string })[emp.id] || "";
         });
 
         setExecutiveChats(newExecutiveChats);

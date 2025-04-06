@@ -9,7 +9,13 @@ const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters long."),
 });
 
-export async function loginUser({ email, password }) {
+// Define interface for function parameters
+interface LoginUserParams {
+  email: string;
+  password: string;
+}
+
+export async function loginUser({ email, password }: LoginUserParams) {
   // Validate login data
   const parsed = loginSchema.safeParse({ email, password });
   if (!parsed.success) {

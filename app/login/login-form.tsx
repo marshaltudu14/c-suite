@@ -42,8 +42,11 @@ const formSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters long."),
 });
 
+// Infer type from Zod schema
+type LoginFormValues = z.infer<typeof formSchema>;
+
 export default function LoginPage() {
-  const [serverError, setServerError] = useState(null);
+  const [serverError, setServerError] = useState<string | null>(null); // Allow string or null
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
@@ -51,7 +54,7 @@ export default function LoginPage() {
   // If a redirect parameter is provided, use that; otherwise default:
   const redirectTo = urlParams.get("redirect") || "/";
 
-  const form = useForm({
+  const form = useForm<LoginFormValues>({ // Add type argument to useForm
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
@@ -59,7 +62,7 @@ export default function LoginPage() {
     },
   });
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async (values: LoginFormValues) => { // Type the values parameter
     setServerError(null);
     setIsLoading(true);
 
@@ -87,9 +90,9 @@ export default function LoginPage() {
   return (
     <main
       className="
-        flex 
-        items-center 
-        justify-center 
+        flex
+        items-center
+        justify-center
         min-h-screen
         px-4
       "
@@ -97,15 +100,15 @@ export default function LoginPage() {
       <div>
         <Card
           className="
-            w-full 
+            w-full
             max-w-md
-            min-w-[350px] 
-            shadow-lg 
-            rounded-lg 
-            border 
-            border-gray-200 
+            min-w-[350px]
+            shadow-lg
+            rounded-lg
+            border
+            border-gray-200
             dark:border-gray-800
-            transition-colors 
+            transition-colors
             bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950
           "
         >
@@ -139,17 +142,17 @@ export default function LoginPage() {
                           {...field}
                           placeholder="you@example.com"
                           className="
-                            focus:ring-2 
-                            focus:ring-blue-500 
+                            focus:ring-2
+                            focus:ring-blue-500
                             dark:focus:ring-blue-400
                           "
                         />
                       </FormControl>
                       <FormMessage
                         className="
-                          text-sm 
-                          mt-1 
-                          text-red-600 
+                          text-sm
+                          mt-1
+                          text-red-600
                           dark:text-red-400
                         "
                       />
@@ -172,17 +175,17 @@ export default function LoginPage() {
                           type="password"
                           placeholder="Enter your password"
                           className="
-                            focus:ring-2 
-                            focus:ring-blue-500 
+                            focus:ring-2
+                            focus:ring-blue-500
                             dark:focus:ring-blue-400
                           "
                         />
                       </FormControl>
                       <FormMessage
                         className="
-                          text-sm 
-                          mt-1 
-                          text-red-600 
+                          text-sm
+                          mt-1
+                          text-red-600
                           dark:text-red-400
                         "
                       />
@@ -203,7 +206,7 @@ export default function LoginPage() {
                     type="submit"
                     disabled={isLoading}
                     className="
-                      w-full 
+                      w-full
                     "
                   >
                     {isLoading ? (

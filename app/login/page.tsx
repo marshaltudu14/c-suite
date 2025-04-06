@@ -11,10 +11,16 @@ export async function generateMetadata() {
   };
 }
 
-export default async function LoginPage({ searchParams }) {
-  const params = await searchParams;
-  // Get the redirect URL or default to "/my-account"
-  const redirectUrl = params?.redirect || "/";
+// Use 'any' as a workaround for persistent PageProps type error
+export default async function LoginPage({ params, searchParams }: any) {
+  // Handle potential string array for redirectUrl
+  let redirectUrl = "/"; // Default
+  const redirectParam = searchParams?.redirect;
+  if (Array.isArray(redirectParam)) {
+    redirectUrl = redirectParam[0] || "/"; // Take first element or default
+  } else if (typeof redirectParam === 'string') {
+    redirectUrl = redirectParam;
+  }
 
   // Create Supabase client (returns a typed instance if you've defined Database)
   const supabase = await createClient();

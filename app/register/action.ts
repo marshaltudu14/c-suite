@@ -37,7 +37,14 @@ const newUserSchema = z
   })
   .and(passwordMatchSchema);
 
-export async function registerUser({ email, password, passwordConfirm }) {
+// Define interface for function parameters
+interface RegisterUserParams {
+  email: string;
+  password: string;
+  passwordConfirm: string;
+}
+
+export async function registerUser({ email, password, passwordConfirm }: RegisterUserParams) {
   // 1. Validate input against our newUserSchema.
   const validation = newUserSchema.safeParse({
     email,

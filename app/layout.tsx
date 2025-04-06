@@ -52,7 +52,7 @@ export async function generateMetadata() {
   };
 }
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) { // Add type for children
   return (
     <html lang="en" suppressHydrationWarning>
       <body

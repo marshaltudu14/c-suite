@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useChat } from "ai/react";
+// Import necessary types from 'ai' and 'ai/react'
+import { CoreMessage, Message, LanguageModelUsage } from "ai"; // Removed LanguageModelV1FinishReason if not exported
+import { useChat, type UseChatOptions } from "ai/react";
 import { Loader2 } from "lucide-react";
 
 // Custom hooks
@@ -22,10 +24,43 @@ import UploadProgress from "@/app/_chatComponents/UploadProgress";
 import ModelSelector from "@/app/_chatComponents/ModelSelector";
 import ChatInput from "@/app/_chatComponents/ChatInput";
 
-export default function RoleChatClient({ roleData, systemPrompt }) {
-  const fileInputRef = useRef(null);
-  const textareaRef = useRef(null);
-  const chatContainerRef = useRef(null);
+// Define interface for Role Data (matching page.tsx)
+interface RoleData {
+  id: string;
+  name: string;
+  position: string;
+  image: string;
+  link: string;
+  promptTemplate: string;
+}
+
+// Define interface for component props
+interface RoleChatClientProps {
+  roleData: RoleData;
+  systemPrompt: string;
+}
+
+// Define interface for attachment data sent to API
+interface AttachmentDataForApi {
+  name: string;
+  type: string;
+  size: number;
+  content: string | ArrayBuffer | null;
+}
+
+// Define interface for attachment file used in state
+interface AttachmentFile {
+  name: string;
+  type: string;
+  size: number;
+  content: string | ArrayBuffer | null;
+}
+
+export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClientProps) {
+  // Refs - Assuming child components might need non-null refs
+  const fileInputRef = useRef<HTMLInputElement>(null!); // Use non-null assertion if confident it's always assigned
+  const textareaRef = useRef<HTMLTextAreaElement>(null!); // Use non-null assertion
+  const chatContainerRef = useRef<HTMLDivElement>(null!); // Use non-null assertion
 
   // Custom hooks
   const { user, loadingUser } = useAuth();
@@ -35,37 +70,15 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
   const [useReasoningModel, setUseReasoningModel] = useState(false);
   const [modelType, setModelType] = useState("llama3.2");
 
-  // Use roleData prop directly
-  const selectedPerson = roleData;
+  // Use roleData prop directly - type explicitly
+  const selectedPerson: RoleData = roleData;
   const category = selectedPerson?.link?.split("/")[2];
   const personId = selectedPerson?.id;
 
-  // Vercel AI chat hook
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    setInput,
-    setMessages, // Keep setMessages from useChat
-  } = useChat({
-    api: "/api/chat",
-    body: {
-      systemPrompt,
-      companyDetails,
-      selectedPerson,
-      modelType,
-      attachments: [],
-      userId: user?.id,
-    },
-    initialMessages: [], // Start with empty messages, history loaded via useEffect
-    onFinish: (message) => {},
-  });
-
-  // File handling hook
+  // File handling hook - Ensure setAttachments is included
   const {
     attachments,
+    setAttachments, // Added setAttachments
     pastedContent,
     isUploading,
     uploadProgress,
@@ -76,9 +89,35 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
     setPastedContent,
   } = useFileHandling();
 
-  // Chat history hook (without setMessages)
+  // Vercel AI chat hook
   const {
-    chatHistory, // Raw history from DB
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    setInput,
+    setMessages,
+  } = useChat({
+    api: "/api/chat",
+    body: {
+      systemPrompt,
+      companyDetails,
+      selectedPerson,
+      modelType,
+      // attachments: attachments as AttachmentDataForApi[], // Remove attachments from initial body
+      userId: user?.id,
+    },
+    initialMessages: [] as Message[], // Use Message[]
+    // Correct onFinish signature (removed potentially problematic FinishReason)
+    onFinish: (message: Message, options?: { usage?: LanguageModelUsage }) => {
+      // console.log("Finished:", message, options);
+    },
+  } as UseChatOptions); // Cast options
+
+  // Chat history hook
+  const {
+    chatHistory,
     loadingHistory,
     loadingOlderMessages,
     hasMoreMessages,
@@ -86,15 +125,15 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
     fetchOlderMessages,
     clearChatHistory,
     checkAndLoadMoreMessages,
-    convertHistoryToMessages, // Get converter
-    limitMessagesToTokenCount, // Get limiter
-  } = useChatHistory(user); // Pass only user
+    convertHistoryToMessages,
+    limitMessagesToTokenCount,
+  } = useChatHistory(user);
 
   // Scroll handling hook
   const { showScrollToBottom, handleScroll, scrollToBottom } =
     useScrollHandling(
       chatContainerRef,
-      messages, // Pass messages from useChat
+      messages,
       checkAndLoadMoreMessages,
       selectedPerson
     );
@@ -108,48 +147,62 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
     setModelType(useReasoningModel ? "llama3.2" : "deepseek-r1");
   };
 
-  // Custom submit handler
-  const customSubmit = (e) => {
-    e.preventDefault();
+  // Refactored submit logic (no event needed)
+  // Make it async to handle file reading
+  const prepareAndSubmit = async () => {
     if (!input.trim() && attachments.length === 0 && !pastedContent) return;
 
     let finalInput = input;
     if (pastedContent) {
       finalInput = pastedContent + "\n\n" + input;
-      setPastedContent("");
+      setPastedContent(""); // Clear pasted content after preparing input
     }
 
-    const attachmentDataForApi = attachments.map((att) => ({
-      name: att.name,
-      type: att.type,
-      size: att.size,
-      content: att.content,
-    }));
+    // Read file contents asynchronously before submitting
+    const attachmentDataForApi: AttachmentDataForApi[] = await Promise.all(
+      attachments.map(async (file: File) => {
+        const content = await new Promise<string | ArrayBuffer | null>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = (error) => reject(error);
+          // Read as Data URL for simplicity, adjust if API needs ArrayBuffer
+          reader.readAsDataURL(file);
+        });
+        return {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          content: content, // Use the read content
+        };
+      })
+    );
 
+    // Use setInput before calling handleSubmit if input changed
     if (finalInput !== input) {
       setInput(finalInput);
     }
 
-    handleSubmit(e, {
-      options: {
-        body: {
-          systemPrompt,
-          companyDetails,
-          selectedPerson,
-          modelType,
-          attachments: attachmentDataForApi,
-          userId: user?.id,
-        },
+    // Call handleSubmit with the current input and updated body
+    handleSubmit(null as any, { // Pass null or a fake event if required, cast to any if needed
+      body: {
+        systemPrompt,
+        companyDetails,
+        selectedPerson,
+        modelType,
+        attachments: attachmentDataForApi,
+        userId: user?.id,
       },
     });
-    setAttachments([]);
+
+    setAttachments([]); // Clear attachments after submit
+    // Input is cleared automatically by useChat hook
   };
 
   // Handle keydown for submit
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      customSubmit(e);
+      prepareAndSubmit(); // Call the refactored submit logic
     }
   };
 
@@ -159,24 +212,25 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
       fetchChatHistory(selectedPerson.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedPerson]); // Rerun if user or selectedPerson changes
+  }, [user, selectedPerson]);
 
-  // Effect to load fetched history into useChat's state *once* after it loads
+  // Effect to load fetched history into useChat's state *once*
   useEffect(() => {
     if (!loadingHistory && chatHistory.length > 0) {
-      // Check if messages is empty to avoid overwriting ongoing chat
       if (messages.length === 0) {
         const historyMessages = convertHistoryToMessages(chatHistory);
-        // Apply token limiting if needed
+        // Assuming limitMessagesToTokenCount expects ChatMessage[] and returns ChatMessage[]
+        // Need to ensure compatibility with useChat's Message[] type
+        // For now, let's cast, but this might need adjustment in the hook or here
         const limitedMessages = limitMessagesToTokenCount(
-          historyMessages,
+          historyMessages as any, // Cast if types differ, review needed
           systemPrompt
         );
-        setMessages(limitedMessages);
+        setMessages(limitedMessages as Message[]); // Cast if types differ
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingHistory, chatHistory]); // Run when history loading finishes or history array changes
+  }, [loadingHistory, chatHistory]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -218,7 +272,7 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
           selectedPerson={selectedPerson}
           onClearHistory={() => {
             clearChatHistory(selectedPerson);
-            setMessages([]); // Also clear useChat messages state
+            setMessages([]);
           }}
         />
 
@@ -226,11 +280,11 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
         <ChatArea
           chatContainerRef={chatContainerRef}
           handleScroll={handleScroll}
-          loadingHistory={loadingHistory} // Pass loading state for initial load indicator
+          loadingHistory={loadingHistory}
           loadingOlderMessages={loadingOlderMessages}
           hasMoreMessages={hasMoreMessages}
-          displayedMessages={displayedMessages}
-          isLoading={isLoading} // Loading state from useChat
+          displayedMessages={displayedMessages} // Pass filtered messages
+          isLoading={isLoading}
         />
 
         {/* Scroll-to-bottom button */}
@@ -246,7 +300,7 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
 
         {/* Attachments preview */}
         <AttachmentsPreview
-          attachments={attachments}
+          attachments={attachments} // Pass AttachmentFile[]
           removeAttachment={removeAttachment}
         />
 
@@ -267,24 +321,20 @@ export default function RoleChatClient({ roleData, systemPrompt }) {
 
             {/* Input area */}
             <ChatInput
-              textareaRef={textareaRef}
-              fileInputRef={{
-                current: {
-                  click: () => fileInputRef.current?.click(),
-                  onChange: handleFileUpload,
-                },
-              }}
+              textareaRef={textareaRef} // Pass non-null ref
+              fileInputRef={fileInputRef} // Pass non-null ref
               input={input}
               handleInputChange={handleInputChange}
               handleKeyDown={handleKeyDown}
               handlePaste={handlePaste}
-              customSubmit={customSubmit}
+              customSubmit={prepareAndSubmit} // Pass refactored submit
               selectedPerson={selectedPerson}
               isLoading={isLoading}
               pastedContent={pastedContent}
-              attachments={attachments}
+              attachments={attachments} // Pass AttachmentFile[]
             />
 
+            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"

@@ -61,14 +61,16 @@ export async function GET() {
     // If no row found, data will be null
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (err) {
+    // Type check the error
+    const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
     return NextResponse.json(
-      { success: false, error: err.message || "Unknown error" },
+      { success: false, error: errorMessage },
       { status: 400 }
     );
   }
 }
 
-export async function POST(request) {
+export async function POST(request: Request) { // Type the request parameter
   const supabase = await createClient();
 
   try {
@@ -138,8 +140,16 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (err) {
+    // Type check the error
+    let errorMessage = "Invalid request data";
+    if (err instanceof z.ZodError) {
+      // Handle Zod validation errors specifically
+      errorMessage = err.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    } else if (err instanceof Error) {
+      errorMessage = err.message;
+    }
     return NextResponse.json(
-      { success: false, error: err.message || "Invalid request data" },
+      { success: false, error: errorMessage },
       { status: 400 }
     );
   }

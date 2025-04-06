@@ -5,7 +5,13 @@ import { FileText, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-export default function PastedContent({ pastedContent, removePastedContent }) {
+// Define props interface
+interface PastedContentProps {
+  pastedContent: string | null | undefined;
+  removePastedContent: () => void;
+}
+
+export default function PastedContent({ pastedContent, removePastedContent }: PastedContentProps) {
   if (!pastedContent) return null;
 
   return (

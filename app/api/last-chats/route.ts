@@ -1,8 +1,15 @@
-// app/api/last-chats/route.js
+// app/api/last-chats/route.ts
 import { createClient } from "@/utils/supabase/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server"; // Import NextRequest
 
-export async function GET(req) {
+// Define interface for the RPC result
+interface LastChatResult {
+  agent: string | null;
+  message: string | null;
+  created_at: string | null; // Assuming string representation
+}
+
+export async function GET(req: NextRequest) { // Type req
   try {
     const supabase = await createClient();
 
@@ -34,11 +41,14 @@ export async function GET(req) {
       );
     }
 
+    // Type the data from RPC call
+    const typedData = data as LastChatResult[] | null;
+
     // Format the result into an object: { agentSlug: messageContent, ... }
-    const lastChats = data.reduce((acc, chat) => {
+    const lastChats = (typedData || []).reduce((acc: { [key: string]: string | null }, chat: LastChatResult) => { // Type accumulator and chat
       // Ensure agent is not null and is a string before using it as a key
       if (chat.agent && typeof chat.agent === "string") {
-        acc[chat.agent] = chat.message; // Assuming the RPC returns 'agent' and 'message'
+        acc[chat.agent] = chat.message;
       }
       return acc;
     }, {});
@@ -46,8 +56,10 @@ export async function GET(req) {
     return NextResponse.json({ success: true, data: lastChats });
   } catch (error) {
     console.error("Error in /api/last-chats:", error);
+    // Type check the error
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch last chats";
     return NextResponse.json(
-      { success: false, error: "Failed to fetch last chats" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -2,28 +2,50 @@
 
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { User } from "@supabase/supabase-js"; // Import User type
+
+// Define interface for chat history items from DB
+interface ChatItem {
+  id: string;
+  role: "user" | "assistant";
+  message: string;
+  created_at: string; // Assuming string from DB
+}
+
+// Define interface for the message format used by useChat hook or similar
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+// Define interface for person data used in fetchLastChats
+interface PersonData {
+  id: string;
+  name: string;
+}
 
 // Approximate token count for a string (rough estimate)
-const estimateTokenCount = (text) => {
+const estimateTokenCount = (text: string): number => {
   // A very rough approximation: ~4 characters per token for English text
   return Math.ceil(text.length / 4);
 };
 
-// Removed setMessages parameter
-export function useChatHistory(user) {
-  const [chatHistory, setChatHistory] = useState([]);
+// Type the user parameter and chatHistory state
+export function useChatHistory(user: User | null) {
+  const [chatHistory, setChatHistory] = useState<ChatItem[]>([]); // Type the state
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 10; // Number of messages to fetch per page
   const maxTokens = 50000; // Maximum tokens to include in context (reduced to 50k as requested)
-  const oldestMessageIdRef = useRef(null);
-  const systemPromptTokensRef = useRef(0); // To track system prompt tokens
+  const oldestMessageIdRef = useRef<string | null>(null); // Correctly typed useRef
+  const systemPromptTokensRef = useRef<number>(0); // Type useRef
 
   // Convert chat history to the format expected by useChat
-  const convertHistoryToMessages = (history) => {
-    return history.map((item) => ({
+  const convertHistoryToMessages = (history: ChatItem[]): ChatMessage[] => { // Type parameter and return
+    return history.map((item: ChatItem) => ({ // Type item
       id: item.id,
       role: item.role === "assistant" ? "assistant" : "user",
       content: item.message,
@@ -32,9 +54,9 @@ export function useChatHistory(user) {
 
   // Limit messages to stay under token limit, preserving system prompts
   // Note: This function might be less relevant now if history isn't directly passed to useChat's messages state
-  const limitMessagesToTokenCount = (messages, systemPrompt = "") => {
+  const limitMessagesToTokenCount = (messages: ChatMessage[], systemPrompt: string = ""): ChatMessage[] => { // Type parameters and return
     let totalTokens = 0;
-    const limitedMessages = [];
+    const limitedMessages: ChatMessage[] = []; // Type array
 
     const systemPromptTokens = estimateTokenCount(systemPrompt);
     systemPromptTokensRef.current = systemPromptTokens;
@@ -46,7 +68,8 @@ export function useChatHistory(user) {
 
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
-      const tokenCount = estimateTokenCount(msg.content);
+      // Ensure msg.content exists before estimating tokens
+      const tokenCount = msg.content ? estimateTokenCount(msg.content) : 0;
 
       if (totalTokens + tokenCount <= availableTokens) {
         limitedMessages.unshift(msg);
@@ -71,7 +94,7 @@ export function useChatHistory(user) {
 
   // Wrap fetchChatHistory with useCallback
   const fetchChatHistory = useCallback(
-    async (agentId) => {
+    async (agentId: string) => { // Type agentId
       if (!user) return;
 
       setLoadingHistory(true);
@@ -98,8 +121,10 @@ export function useChatHistory(user) {
         const data = await response.json();
 
         if (data.success && data.data) {
-          const sortedData = [...data.data].sort(
-            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+          // Assert data.data type and fix sort
+          const fetchedData = data.data as ChatItem[];
+          const sortedData = [...fetchedData].sort(
+            (a: ChatItem, b: ChatItem) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime() // Fix sort and type a, b
           );
           setChatHistory(sortedData); // Store the raw history
 
@@ -130,7 +155,7 @@ export function useChatHistory(user) {
 
   // Wrap fetchOlderMessages with useCallback
   const fetchOlderMessages = useCallback(
-    async (agentId) => {
+    async (agentId: string) => { // Type agentId
       if (!user || !hasMoreMessages || loadingOlderMessages) return;
       if (!oldestMessageIdRef.current) {
         console.warn("No oldest message ID available for pagination");
@@ -160,8 +185,10 @@ export function useChatHistory(user) {
         const data = await response.json();
 
         if (data.success && data.data && data.data.length > 0) {
-          const sortedNewData = [...data.data].sort(
-            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+          // Assert data.data type and fix sort
+          const fetchedData = data.data as ChatItem[];
+          const sortedNewData = [...fetchedData].sort(
+            (a: ChatItem, b: ChatItem) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime() // Fix sort and type a, b
           );
 
           if (sortedNewData.length > 0) {
@@ -202,7 +229,7 @@ export function useChatHistory(user) {
 
   // Wrap clearChatHistory with useCallback
   const clearChatHistory = useCallback(
-    async (selectedPerson) => {
+    async (selectedPerson: PersonData | null) => { // Type selectedPerson
       if (!user || !selectedPerson) return;
       try {
         const response = await fetch(
@@ -228,14 +255,14 @@ export function useChatHistory(user) {
 
   // fetchLastChats remains unchanged as it doesn't interact with setMessages
   const fetchLastChats = useCallback(
-    async (executivesData, employeesData) => {
+    async (executivesData: PersonData[], employeesData: PersonData[]) => { // Type parameters
       if (!user) return { executivesChats: {}, employeesChats: {} };
       try {
-        const newExecutiveChats = {};
+        const newExecutiveChats: { [key: string]: string } = {}; // Add index signature
         for (const exec of executivesData) {
           newExecutiveChats[exec.id] = `Chat with ${exec.name}`;
         }
-        const newEmployeeChats = {};
+        const newEmployeeChats: { [key: string]: string } = {}; // Add index signature
         for (const emp of employeesData) {
           newEmployeeChats[emp.id] = `Chat with ${emp.name}`;
         }
@@ -253,7 +280,7 @@ export function useChatHistory(user) {
 
   // checkAndLoadMoreMessages remains largely the same, relying on fetchOlderMessages
   const checkAndLoadMoreMessages = useCallback(
-    (scrollTop, agentId, isOldestMessageInView = false) => {
+    (scrollTop: number, agentId: string, isOldestMessageInView: boolean = false) => { // Type parameters
       const loadOlder = async () => {
         await fetchOlderMessages(agentId);
       };

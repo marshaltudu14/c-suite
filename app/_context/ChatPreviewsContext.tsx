@@ -9,9 +9,14 @@ const ChatPreviewsContext = createContext({
   fetchChatPreviews: async () => {}, // Add fetch function to context if needed for manual refresh
 });
 
-export function ChatPreviewsProvider({ children }) {
+// Define props interface for the provider
+interface ChatPreviewsProviderProps {
+  children: React.ReactNode;
+}
+
+export function ChatPreviewsProvider({ children }: ChatPreviewsProviderProps) {
   const { user, loadingUser } = useAuth(); // Get user status from your auth hook
-  const [chatPreviews, setChatPreviews] = useState({});
+  const [chatPreviews, setChatPreviews] = useState<{ [key: string]: string }>({}); // Add index signature
   const [loadingPreviews, setLoadingPreviews] = useState(true);
 
   const fetchChatPreviews = async () => {
@@ -30,7 +35,8 @@ export function ChatPreviewsProvider({ children }) {
       const data = await response.json();
 
       if (data.success && data.data) {
-        setChatPreviews(data.data);
+        // Assuming data.data is an object with string keys and string values
+        setChatPreviews(data.data as { [key: string]: string });
       } else {
         console.error("Failed to fetch last chats:", data.error);
         setChatPreviews({}); // Set empty on failure

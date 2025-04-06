@@ -1,4 +1,5 @@
-export const demoExecutiveMessages = {
+// Add index signature type
+export const demoExecutiveMessages: { [key: string]: string } = {
   ceo: "I've analyzed the market trends and prepared a strategic growth plan for next quarter. Let me know your thoughts on the updated proposal!",
   cfo: "The latest financial forecasts indicate a solid revenue increase, but we must allocate more resources to R&D. Thoughts?",
   cmo: "The recent ad campaign is performing above expectations, but we need to engage more on social channels to further boost conversion.",
@@ -6,7 +7,8 @@ export const demoExecutiveMessages = {
   cto: "We're testing the new platform update tonight to improve performance significantly. Any final checks before deployment?",
 };
 
-export const demoEmployeeMessages = {
+// Add index signature type
+export const demoEmployeeMessages: { [key: string]: string } = {
   bda: "A potential B2B lead reached out with interest. I've drafted a proposal and would like your review.",
   cw: "The editorial calendar is ready, and I have a fresh batch of blog topics that'll grab audience attention!",
   cs: "A user encountered a billing issue, but we've resolved it. Let me know if there's anything else you'd like me to improve!",

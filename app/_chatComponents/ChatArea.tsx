@@ -4,13 +4,14 @@ import React, { RefObject, UIEvent } from "react"; // Import necessary types
 import { Loader2 } from "lucide-react";
 import { MessageBubble } from "@/app/_chatComponents/Components";
 
-// Define a basic structure for a message if not already defined elsewhere
-// You might need to adjust this based on your actual message structure
-interface DisplayedMessage {
-  id?: string | number; // Optional id for key prop
-  role: "user" | "assistant" | "agent"; // Adjust roles as needed
-  content: string;
+import { Message } from "ai"; // Import Message type
+
+// Use the Message type from 'ai' library directly or adapt it
+// Let's adapt it slightly for clarity if needed, but ensure compatibility
+interface DisplayedMessage extends Omit<Message, 'role'> { // Inherit from Message, override role if needed
+  role: "user" | "assistant"; // Only allow user/assistant for display
 }
+
 
 // Define prop types for ChatArea
 interface ChatAreaProps {
@@ -19,7 +20,7 @@ interface ChatAreaProps {
   loadingHistory: boolean;
   loadingOlderMessages: boolean;
   hasMoreMessages: boolean;
-  displayedMessages: DisplayedMessage[];
+  displayedMessages: Message[]; // Expect Message[] from parent now
   isLoading: boolean;
 }
 
@@ -60,12 +61,14 @@ export default function ChatArea({
               </div>
             )}
 
-          {/* Message bubbles */}
-          {displayedMessages.map((msg: DisplayedMessage, idx: number) => ( // Add types to map params
+          {/* Message bubbles - Filter roles directly here */}
+          {displayedMessages
+            .filter((msg): msg is Message & { role: 'user' | 'assistant' } => msg.role === 'user' || msg.role === 'assistant')
+            .map((msg, idx: number) => (
             <MessageBubble
-              key={msg.id || idx}
+              key={msg.id || idx} // Use Message's id
               message={{
-                role: msg.role === "assistant" ? "assistant" : "user", // Changed "agent" to "assistant"
+                role: msg.role, // Pass role directly
                 content: msg.content,
               }}
             />
@@ -73,7 +76,7 @@ export default function ChatArea({
 
           {/* Loading indicator for new message */}
           {isLoading && (
-            <MessageBubble message={{ role: "assistant", content: "..." }} /> // Changed "agent" to "assistant"
+            <MessageBubble message={{ role: "assistant", content: "..." }} />
           )}
         </>
       )}

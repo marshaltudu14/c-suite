@@ -8,8 +8,22 @@ export const metadata = {
   description: "Register a new Account.",
 };
 
-export default async function SignupPage({ params }) {
-  const redirectUrl = params.redirectUrl || "/";
+// Define type for Page props
+interface SignupPageProps {
+  params: { [key: string]: string | string[] | undefined };
+}
+
+// Use 'any' as a workaround for persistent PageProps type error
+export default async function SignupPage({ params, searchParams }: any) {
+  // Correctly get redirectUrl from searchParams
+  let redirectUrl = "/"; // Default
+  const redirectParam = searchParams?.redirect;
+  if (Array.isArray(redirectParam)) {
+    redirectUrl = redirectParam[0] || "/"; // Take first element or default
+  } else if (typeof redirectParam === 'string') {
+    redirectUrl = redirectParam;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

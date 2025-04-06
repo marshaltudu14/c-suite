@@ -3,7 +3,13 @@
 import React from "react";
 import { Progress } from "@/components/ui/progress";
 
-export default function UploadProgress({ isUploading, uploadProgress }) {
+// Define props interface
+interface UploadProgressProps {
+  isUploading: boolean;
+  uploadProgress: number;
+}
+
+export default function UploadProgress({ isUploading, uploadProgress }: UploadProgressProps) {
   if (!isUploading) return null;
 
   return (

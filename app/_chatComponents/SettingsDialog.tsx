@@ -12,9 +12,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { User } from "@supabase/supabase-js"; // Import User type
 
-export default function SettingsDialog({ open, onOpenChange }) {
-  const [user, setUser] = useState(null);
+// Define props interface
+interface SettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const [user, setUser] = useState<User | null>(null); // Add User type
 
   //Fetch user
   useEffect(() => {
@@ -27,7 +34,7 @@ export default function SettingsDialog({ open, onOpenChange }) {
         console.log("Error fetching user:", userError);
       }
 
-      setUser(userData.user);
+      setUser(userData.user); // userData.user is already of type User | null
     }
     getUser();
   }, [user]);

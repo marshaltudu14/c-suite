@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
-import { ChevronDown, User, LogOut, Settings, HelpCircle } from "lucide-react";
+import { ChevronDown, User as UserIcon, LogOut, Settings, HelpCircle } from "lucide-react"; // Renamed User icon import
+import { User } from "@supabase/supabase-js"; // Import Supabase User type
 
 export default function Header() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null); // Explicitly type useState
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -137,7 +138,7 @@ export default function Header() {
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
+                    <UserIcon className="mr-2 h-4 w-4" /> {/* Use renamed icon */}
                     <span>Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
