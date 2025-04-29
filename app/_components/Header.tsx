@@ -81,7 +81,7 @@ export default function Header() {
                 transition={{ duration: 0.5 }}
                 className="w-8 h-8 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"
               >
-                <span className="text-white font-bold text-lg">N</span>
+                <span className="text-white font-bold text-lg">C</span>
               </motion.div>
               <motion.span
                 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
@@ -89,7 +89,7 @@ export default function Header() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
               >
-                NAYEX
+                Suite
               </motion.span>
             </Link>
 
