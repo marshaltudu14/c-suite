@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@/utils/supabase/client"; // Restore this import
 import Image from "next/image";
 import Header from "./_components/Header";
-import { User } from "@supabase/supabase-js"; // Import User type
 
 // Import your data and messages
 import {
@@ -18,9 +16,6 @@ import {
   executivesData,
   employeesData,
 } from "@/app/_components/OfficeData";
-// Remove context/auth hook imports
-// import { useAuth } from "./_hooks/useAuth";
-// import { useChatPreviews } from "./_context/ChatPreviewsContext";
 
 /**
  * Framer Motion variants.
@@ -117,33 +112,9 @@ function getExcerpt(text = "", maxLength = 100) {
 
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  // Add types to state
-  const [user, setUser] = useState<User | null>(null); // Type user state
-  const [executiveChats, setExecutiveChats] = useState<{ [key: string]: string }>({}); // Add index signature
-  const [employeeChats, setEmployeeChats] = useState<{ [key: string]: string }>({}); // Add index signature
-  const [loadingUser, setLoadingUser] = useState(true);
-
-  // Restore user session useEffect
-  useEffect(() => {
-    const getUserSession = async () => {
-      try {
-        const supabase = await createClient(); // Use the restored import
-        const { data: userData, error: userError } =
-          await supabase.auth.getUser();
-
-        if (userError || !userData?.user) {
-          console.error("Error fetching user:", userError);
-        } else {
-          setUser(userData.user);
-        }
-      } catch (err) {
-        console.error("Error in getUserSession:", err);
-      } finally {
-        setLoadingUser(false);
-      }
-    };
-    getUserSession();
-  }, []);
+  const [executiveChats, setExecutiveChats] = useState<{ [key: string]: string }>({});
+  const [employeeChats, setEmployeeChats] = useState<{ [key: string]: string }>({});
+  
 
   // Restore placeholder chat fetch useEffect
   useEffect(() => {
@@ -189,13 +160,7 @@ export default function DashboardPage() {
   const companyLogos = ["Forbes", "TechCrunch", "Wired", "Fast Company"];
 
   // Use original loading state logic
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
-  }
+  
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { logout } from "@/app/_chatComponents/action";
+
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { User } from "@supabase/supabase-js"; // Import User type
+
 
 // Define props interface
 interface SettingsDialogProps {
@@ -21,23 +20,7 @@ interface SettingsDialogProps {
 }
 
 export default function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const [user, setUser] = useState<User | null>(null); // Add User type
-
-  //Fetch user
-  useEffect(() => {
-    async function getUser() {
-      const supabase = await createClient();
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
-
-      if (userError || !userData?.user) {
-        console.log("Error fetching user:", userError);
-      }
-
-      setUser(userData.user); // userData.user is already of type User | null
-    }
-    getUser();
-  }, [user]);
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,17 +55,7 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
             </div>
 
             {/* Logout button */}
-            {user && (
-              <div>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={logout}
-                >
-                  Logout
-                </Button>
-              </div>
-            )}
+            
           </div>
         </motion.div>
       </DialogContent>

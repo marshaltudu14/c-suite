@@ -3,29 +3,15 @@
 import { useState, useEffect } from "react";
 
 export function useCompanyDetails() {
-  const [companyDetails, setCompanyDetails] = useState([]);
-
-  useEffect(() => {
-    async function getCompanyDetails() {
-      try {
-        const res = await fetch("/api/account-details", {
-          method: "GET",
-        });
-        const { success, data, error } = await res.json();
-        if (!success) {
-          console.error("Failed to fetch details:", error);
-          return;
-        }
-
-        if (data) {
-          setCompanyDetails(data);
-        }
-      } catch (error) {
-        console.error("Error fetching user details:", error);
-      }
-    }
-    getCompanyDetails();
-  }, []);
+  const [companyDetails, setCompanyDetails] = useState([
+    {
+      company_name: "Nayem Inc.",
+      company_slogan: "The slogan of the company.",
+      company_values: "The values of the company.",
+      company_mission: "The mission of the company.",
+      company_vision: "The vision of the company.",
+    },
+  ]);
 
   return { companyDetails };
 }

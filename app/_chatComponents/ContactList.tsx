@@ -31,10 +31,6 @@ interface PersonIdentifier {
 }
 
 interface ContactsListProps {
-  searchQuery: string;
-  setSearchQuery: Dispatch<SetStateAction<string>>; // Common type for useState setter
-  user: User | null; // Assuming user object or null
-  loadingUser: boolean;
   currentCategory: string | null | undefined; // Category could be null/undefined
   currentPersonId: string | number | null | undefined; // ID could be null/undefined
 }
@@ -49,11 +45,6 @@ interface StringIndexed {
  * The left panel (desktop only) listing all executives/employees.
  */
 export default function ContactsList({
-  searchQuery,
-  setSearchQuery,
-  user, // Keep user prop to differentiate logged-in state
-  // Remove executivesChats, employeesChats props
-  loadingUser, // Keep loadingUser prop
   currentCategory,
   currentPersonId,
 }: ContactsListProps) { // Apply props type
@@ -61,42 +52,13 @@ export default function ContactsList({
   const { chatPreviews, loadingPreviews }: { chatPreviews: StringIndexed, loadingPreviews: boolean } = useChatPreviews();
 
   // Filter logic
-  const filteredExecutives = executivesData.filter((exec) => {
-    const text = `${exec.name} ${exec.position}`.toLowerCase();
-    return text.includes(searchQuery.toLowerCase());
-  });
+  const filteredExecutives = executivesData;
 
-  const filteredEmployees = employeesData.filter((emp) => {
-    const text = `${emp.name} ${emp.position}`.toLowerCase();
-    return text.includes(searchQuery.toLowerCase());
-  });
+  const filteredEmployees = employeesData;
 
   return (
     <div className="hidden md:flex md:flex-col w-1/3 h-full border-r border-gray-200 dark:border-gray-800 p-4 overflow-y-auto">
-      {loadingUser ? (
-        <div className="flex items-center justify-center">
-          <p className="text-gray-600 dark:text-gray-300">Loading user...</p>
-        </div>
-      ) : (
-        <>
-          {/* Search input */}
-          <div className="relative mb-4">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            <Input
-              placeholder="Search employees or executives..."
-              value={searchQuery}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)} // Add type to event
-              className="pl-9 pr-9"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+      
 
           {/* Executives list */}
           <motion.section
@@ -109,7 +71,7 @@ export default function ContactsList({
               Executives
             </h2>
             <div className="flex flex-col space-y-2">
-              {loadingPreviews && user ? ( // Show skeletons if logged in and loading previews
+              {loadingPreviews ? ( // Show skeletons if logged in and loading previews
                 Array.from({ length: 3 }).map((_, index) => (
                   <Skeleton
                     key={`exec-skel-${index}`}
@@ -120,9 +82,7 @@ export default function ContactsList({
                 filteredExecutives.map((exec) => {
                   // Use context previews if logged in, otherwise use demo messages
                   // Cast demo messages to StringIndexed to allow string indexing
-                  const rawMessage = user
-                    ? chatPreviews[exec.id] || "" // Use context preview
-                    : (demoExecutiveMessages as StringIndexed)[exec.id] || ""; // Use demo message
+                                    const rawMessage = (demoExecutiveMessages as StringIndexed)[exec.id] || ""; // Use demo message
                   const chatMessage = getExcerpt(rawMessage, 100);
 
                   const linkHref = exec.link; // Use link from updated OfficeData
@@ -158,8 +118,7 @@ export default function ContactsList({
                             </p>
                             {/* Excerpt of last message */}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {chatMessage ||
-                                (user ? "No recent messages" : "")}{" "}
+                              {chatMessage || "No recent messages"}{" "}
                               {/* Handle empty preview */}
                             </p>
                           </div>
@@ -186,7 +145,7 @@ export default function ContactsList({
               Employees
             </h2>
             <div className="flex flex-col space-y-2">
-              {loadingPreviews && user ? ( // Show skeletons if logged in and loading previews
+              {loadingPreviews ? ( // Show skeletons if logged in and loading previews
                 Array.from({ length: 5 }).map((_, index) => (
                   <Skeleton
                     key={`emp-skel-${index}`}
@@ -197,9 +156,7 @@ export default function ContactsList({
                 filteredEmployees.map((emp) => {
                   // Use context previews if logged in, otherwise use demo messages
                   // Cast demo messages to StringIndexed to allow string indexing
-                  const rawMessage = user
-                    ? chatPreviews[emp.id] || "" // Use context preview
-                    : (demoEmployeeMessages as StringIndexed)[emp.id] || ""; // Use demo message
+                  const rawMessage = (demoEmployeeMessages as StringIndexed)[emp.id] || ""; // Use demo message
                   const chatMessage = getExcerpt(rawMessage, 100);
 
                   const linkHref = emp.link; // Use link from updated OfficeData
@@ -235,8 +192,7 @@ export default function ContactsList({
                             </p>
                             {/* Excerpt of last message */}
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {chatMessage ||
-                                (user ? "No recent messages" : "")}{" "}
+                              {chatMessage || "No recent messages"}{" "}
                               {/* Handle empty preview */}
                             </p>
                           </div>
@@ -252,8 +208,7 @@ export default function ContactsList({
               )}
             </div>
           </motion.section>
-        </>
-      )}
+        
     </div>
   );
 }

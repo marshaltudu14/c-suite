@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, MoreVertical, Trash2 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+
 
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import {

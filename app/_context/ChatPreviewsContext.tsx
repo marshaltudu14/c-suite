@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import { useAuth } from "@/app/_hooks/useAuth"; // Assuming useAuth provides user object
 
 const ChatPreviewsContext = createContext({
@@ -19,7 +19,7 @@ export function ChatPreviewsProvider({ children }: ChatPreviewsProviderProps) {
   const [chatPreviews, setChatPreviews] = useState<{ [key: string]: string }>({}); // Add index signature
   const [loadingPreviews, setLoadingPreviews] = useState(true);
 
-  const fetchChatPreviews = async () => {
+  const fetchChatPreviews = useCallback(async () => {
     if (!user) {
       setChatPreviews({}); // Clear previews if no user
       setLoadingPreviews(false);
@@ -47,15 +47,14 @@ export function ChatPreviewsProvider({ children }: ChatPreviewsProviderProps) {
     } finally {
       setLoadingPreviews(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    // Fetch previews only when user authentication status is resolved and user exists
+    // Fetch previews only when user authentication status is resolved
     if (!loadingUser) {
       fetchChatPreviews();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loadingUser]); // Re-fetch if user logs in/out
+  }, [loadingUser, fetchChatPreviews]); // Use memoized fetchChatPreviews
 
   const value = {
     chatPreviews,

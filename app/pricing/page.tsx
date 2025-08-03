@@ -351,7 +351,7 @@ const PricingPage = () => {
                 {
                   question: "How secure is my company data?",
                   answer:
-                    "We use enterprise-grade encryption and security practices to protect your data. All information is stored securely in Supabase with strict access controls.",
+                    "We use enterprise-grade encryption and security practices to protect your data. All information is stored securely with strict access controls.",
                 },
                 {
                   question: "Can I upgrade or downgrade my plan?",

@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 // Import necessary types from 'ai' and 'ai/react'
 import { CoreMessage, Message, LanguageModelUsage } from "ai"; // Removed LanguageModelV1FinishReason if not exported
 import { useChat, type UseChatOptions } from "ai/react";
 import { Loader2 } from "lucide-react";
 
 // Custom hooks
-import { useAuth } from "@/app/_hooks/useAuth";
-import { useCompanyDetails } from "@/app/_hooks/useCompanyDetails";
+
 import { useChatHistory } from "@/app/_hooks/useChatHistory";
 import { useFileHandling } from "@/app/_hooks/useFileHandling";
-import { useScrollHandling } from "@/app/_hooks/useScrollHandling";
+
 
 // Components
 import ContactsList from "@/app/_chatComponents/ContactList";
@@ -61,14 +60,17 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
   const fileInputRef = useRef<HTMLInputElement>(null!); // Use non-null assertion if confident it's always assigned
   const textareaRef = useRef<HTMLTextAreaElement>(null!); // Use non-null assertion
   const chatContainerRef = useRef<HTMLDivElement>(null!); // Use non-null assertion
+  const historyLoadedRef = useRef<boolean>(false); // Track if history has been loaded
 
   // Custom hooks
-  const { user, loadingUser } = useAuth();
-  const { companyDetails } = useCompanyDetails();
+  
 
   // AI model selection
-  const [useReasoningModel, setUseReasoningModel] = useState(false);
-  const [modelType, setModelType] = useState("llama3.2");
+  const [useReasoningModel, setUseReasoningModel] = React.useState(false);
+
+  const toggleModel = (checked: boolean) => {
+    setUseReasoningModel(checked);
+  };
 
   // Use roleData prop directly - type explicitly
   const selectedPerson: RoleData = roleData;
@@ -89,6 +91,8 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
     setPastedContent,
   } = useFileHandling();
 
+  const { chatHistory, loadingHistory, loadingOlderMessages, hasMoreMessages, fetchChatHistory, fetchOlderMessages, clearChatHistory, checkAndLoadMoreMessages, convertHistoryToMessages, limitMessagesToTokenCount, error: chatHistoryError } = useChatHistory();
+
   // Vercel AI chat hook
   const {
     messages,
@@ -98,15 +102,13 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
     isLoading,
     setInput,
     setMessages,
+    append,
   } = useChat({
     api: "/api/chat",
     body: {
       systemPrompt,
-      companyDetails,
       selectedPerson,
-      modelType,
       // attachments: attachments as AttachmentDataForApi[], // Remove attachments from initial body
-      userId: user?.id,
     },
     initialMessages: [] as Message[], // Use Message[]
     // Correct onFinish signature (removed potentially problematic FinishReason)
@@ -116,36 +118,16 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
   } as UseChatOptions); // Cast options
 
   // Chat history hook
-  const {
-    chatHistory,
-    loadingHistory,
-    loadingOlderMessages,
-    hasMoreMessages,
-    fetchChatHistory,
-    fetchOlderMessages,
-    clearChatHistory,
-    checkAndLoadMoreMessages,
-    convertHistoryToMessages,
-    limitMessagesToTokenCount,
-  } = useChatHistory(user);
+  
 
   // Scroll handling hook
-  const { showScrollToBottom, handleScroll, scrollToBottom } =
-    useScrollHandling(
-      chatContainerRef,
-      messages,
-      checkAndLoadMoreMessages,
-      selectedPerson
-    );
+  
 
   // Left panel search state
-  const [searchQuery, setSearchQuery] = useState("");
+  
 
   // Toggle model function
-  const toggleModel = () => {
-    setUseReasoningModel(!useReasoningModel);
-    setModelType(useReasoningModel ? "llama3.2" : "deepseek-r1");
-  };
+  
 
   // Refactored submit logic (no event needed)
   // Make it async to handle file reading
@@ -171,7 +153,7 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
         return {
           name: file.name,
           type: file.type,
-          size: file.size,
+          size: Number(file.size), // Explicitly convert to number
           content: content, // Use the read content
         };
       })
@@ -186,11 +168,8 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
     handleSubmit(null as any, { // Pass null or a fake event if required, cast to any if needed
       body: {
         systemPrompt,
-        companyDetails,
         selectedPerson,
-        modelType,
         attachments: attachmentDataForApi,
-        userId: user?.id,
       },
     });
 
@@ -208,29 +187,26 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
 
   // Effect to fetch initial history when user/person changes
   useEffect(() => {
-    if (user && selectedPerson) {
+    if (selectedPerson) {
+      historyLoadedRef.current = false; // Reset history loaded flag
       fetchChatHistory(selectedPerson.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedPerson]);
+  }, [selectedPerson, fetchChatHistory]);
 
   // Effect to load fetched history into useChat's state *once*
   useEffect(() => {
-    if (!loadingHistory && chatHistory.length > 0) {
-      if (messages.length === 0) {
-        const historyMessages = convertHistoryToMessages(chatHistory);
-        // Assuming limitMessagesToTokenCount expects ChatMessage[] and returns ChatMessage[]
-        // Need to ensure compatibility with useChat's Message[] type
-        // For now, let's cast, but this might need adjustment in the hook or here
-        const limitedMessages = limitMessagesToTokenCount(
-          historyMessages as any, // Cast if types differ, review needed
-          systemPrompt
-        );
-        setMessages(limitedMessages as Message[]); // Cast if types differ
-      }
+    if (!loadingHistory && chatHistory.length > 0 && !historyLoadedRef.current) {
+      const historyMessages = convertHistoryToMessages(chatHistory);
+      const limitedMessages = limitMessagesToTokenCount(
+        historyMessages as any, // Cast if types differ, review needed
+        4000 // Token limit for message history
+      );
+      setMessages(limitedMessages as Message[]);
+      historyLoadedRef.current = true; // Mark as loaded
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingHistory, chatHistory]);
+  }, [loadingHistory, chatHistory, convertHistoryToMessages, limitMessagesToTokenCount, setMessages]);
+
+  
 
   // Auto-resize textarea
   useEffect(() => {
@@ -244,7 +220,7 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
   const displayedMessages = messages.filter((msg) => msg.role !== "system");
 
   // Loading state
-  if (loadingUser || !user || !selectedPerson) {
+  if (!selectedPerson) {
     return (
       <div className="flex items-center justify-center h-screen w-screen">
         <Loader2 className="animate-spin" />
@@ -257,10 +233,6 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
     <div className="flex h-screen overflow-hidden">
       {/* Left panel */}
       <ContactsList
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        user={user}
-        loadingUser={loadingUser}
         currentCategory={category}
         currentPersonId={personId}
       />
@@ -271,15 +243,15 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
         <ChatTopBar
           selectedPerson={selectedPerson}
           onClearHistory={() => {
-            clearChatHistory(selectedPerson);
+            clearChatHistory();
             setMessages([]);
+            historyLoadedRef.current = false; // Reset history loaded flag
           }}
         />
 
         {/* Chat area */}
         <ChatArea
           chatContainerRef={chatContainerRef}
-          handleScroll={handleScroll}
           loadingHistory={loadingHistory}
           loadingOlderMessages={loadingOlderMessages}
           hasMoreMessages={hasMoreMessages}
@@ -288,9 +260,7 @@ export default function RoleChatClient({ roleData, systemPrompt }: RoleChatClien
         />
 
         {/* Scroll-to-bottom button */}
-        {showScrollToBottom && (
-          <ScrollToBottomButton onClick={scrollToBottom} />
-        )}
+        
 
         {/* Pasted content card */}
         <PastedContent

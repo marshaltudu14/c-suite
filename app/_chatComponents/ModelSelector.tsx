@@ -10,10 +10,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Define prop types for ModelSelector
 interface ModelSelectorProps {
   useReasoningModel: boolean;
-  toggleModel: (checked: boolean) => void; // Assuming toggleModel takes the new checked state
+  toggleModel: (checked: boolean) => void;
 }
 
 export default function ModelSelector({ useReasoningModel, toggleModel }: ModelSelectorProps) { // Apply props type

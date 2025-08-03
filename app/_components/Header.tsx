@@ -13,39 +13,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createClient } from "@/utils/supabase/client";
+
 import Link from "next/link";
 import { ChevronDown, User as UserIcon, LogOut, Settings, HelpCircle } from "lucide-react"; // Renamed User icon import
-import { User } from "@supabase/supabase-js"; // Import Supabase User type
+
 
 export default function Header() {
-  const [user, setUser] = useState<User | null>(null); // Explicitly type useState
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const supabase = await createClient();
-        const {
-          data: { user: userData },
-          error,
-        } = await supabase.auth.getUser();
-
-        if (error) {
-          console.error("Error fetching user:", error);
-        } else {
-          setUser(userData);
-        }
-      } catch (err) {
-        console.error("Unexpected error:", err);
-      }
-    };
-
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
     };
 
-    fetchUser();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -112,78 +92,6 @@ export default function Header() {
 
           {/* Right Side - Auth and Theme */}
           <div className="flex items-center space-x-4">
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="flex items-center space-x-2 cursor-pointer bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-full"
-                  >
-                    <Avatar className="h-8 w-8 border-2 border-blue-100 dark:border-slate-700">
-                      <AvatarImage
-                        src={user.user_metadata?.avatar_url}
-                        alt={user.email}
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                        {user.email?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium hidden sm:inline">
-                      {user.email?.split("@")[0] || "Account"}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                  </motion.div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <UserIcon className="mr-2 h-4 w-4" /> {/* Use renamed icon */}
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    <span>Support</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-500 dark:text-red-400">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <AnimatePresence>
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="hidden sm:block"
-                  >
-                    <Link href="/register">
-                      <Button variant="outline" className="font-medium">
-                        Sign Up
-                      </Button>
-                    </Link>
-                  </motion.div>
-                </AnimatePresence>
-                <Link href="/login">
-                  <motion.div
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <Button className="font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg">
-                      Login
-                    </Button>
-                  </motion.div>
-                </Link>
-              </div>
-            )}
             <div className="border-l pl-4 border-gray-200 dark:border-gray-700">
               <ThemeSwitcher />
             </div>

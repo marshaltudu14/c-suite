@@ -16,7 +16,7 @@ interface DisplayedMessage extends Omit<Message, 'role'> { // Inherit from Messa
 // Define prop types for ChatArea
 interface ChatAreaProps {
   chatContainerRef: RefObject<HTMLDivElement>;
-  handleScroll: (event: UIEvent<HTMLDivElement>) => void;
+  
   loadingHistory: boolean;
   loadingOlderMessages: boolean;
   hasMoreMessages: boolean;
@@ -26,7 +26,6 @@ interface ChatAreaProps {
 
 export default function ChatArea({
   chatContainerRef,
-  handleScroll,
   loadingHistory,
   loadingOlderMessages,
   hasMoreMessages,
@@ -36,7 +35,6 @@ export default function ChatArea({
   return (
     <div
       ref={chatContainerRef}
-      onScroll={handleScroll}
       className="flex-1 overflow-y-auto p-4 flex flex-col space-y-2 bg-gray-50 dark:bg-gray-900"
     >
       {loadingHistory ? (
